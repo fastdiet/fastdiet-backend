@@ -1,2 +1,2 @@
 # fastdiet-backend
-FastDiet Backend — A RESTful API built with FastAPI and Python, responsible for authentication, user preferences, weekly meal plan generation, recipe management, and automatic shopping list creation. It connects to a MySQL database and powers the FastDiet mobile app.
+FastDiet is a health-focused application that helps users create personalized weekly diets based on their preferences, intolerances, and goals. It provides daily meal plans, recipes, and automatically generates a shopping list for the entire week, making healthy eating easy and quick.
