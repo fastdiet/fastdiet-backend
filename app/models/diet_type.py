@@ -1,0 +1,14 @@
+from sqlalchemy import Column, Integer, String
+from sqlalchemy.orm import relationship
+
+from app.db.db_connection import Base
+
+class DietType(Base):
+    __tablename__ = 'diet_types'
+    
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(String(255), nullable=False)
+    
+    # Relationships
+    user_preferences = relationship("UserPreferences", back_populates="diet_type")
+    recipes_diet_types = relationship("RecipesDietType", back_populates="diet_type")
