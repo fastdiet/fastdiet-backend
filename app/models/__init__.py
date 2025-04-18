@@ -23,3 +23,6 @@ from app.models.user_preferences_cuisine import UserPreferencesCuisine
 from app.models.user_preferences_intolerance import UserPreferencesIntolerance
 from app.models.user_preferences import UserPreferences
 from app.models.user import User
+from app.models.email_verification_code import EmailVerificationCode
+from app.models.refresh_token import RefreshToken
+from app.models.password_reset_code import PasswordResetCode

@@ -2,41 +2,34 @@
 from sqlalchemy.orm import Session
 from app.models import User
 from app.schemas.user import UserCreate
-from app.services.password_service import hash_password
-from fastapi import HTTPException
-from sqlalchemy.exc import IntegrityError
 
 
 def get_user_by_username(db: Session, username: str, ):
     return db.query(User).filter(User.username == username).first()
 
+def get_user_by_email(db: Session, email: str, ):
+    return db.query(User).filter(User.email == email).first()
 
+def get_user_by_id(db: Session, user_id: int) -> User | None:
+    return db.query(User).filter(User.id == user_id).first()
 
-def register_user(db: Session, user_data: UserCreate) -> User:
+def get_user_by_username_or_email(db: Session, email: str, username: str) -> User | None:
+    existing_user = db.query(User).filter(
+        (User.email == email) | (User.username == username)
+    ).first()
+    return existing_user
 
-    if db.query(User).filter(User.email == user_data.email).first():
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    if user_data.username and db.query(User).filter(User.username == user_data.username).first():
-        raise HTTPException(status_code=400, detail="Username already taken")
-    
-    hashed_password = hash_password(user_data.password)
-
+def create_user(db: Session, user_data: UserCreate) -> User:
     user = User(
         username=user_data.username,
         email=user_data.email,
         name=user_data.name,
-        hashed_password=hashed_password,
+        hashed_password=user_data.password,
         auth_method="traditional",
         is_verified=False,
     )
 
     db.add(user)
-    try:
-        db.commit()
-        db.refresh(user)
-    except IntegrityError:
-        db.rollback()
-        raise HTTPException(status_code=400, detail="Username or email already in use")
-
+    db.commit()
+    db.refresh(user)
     return user
