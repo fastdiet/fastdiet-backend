@@ -3,10 +3,18 @@ from fastapi.requests import Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.api. routes import users
+from app.core.rate_limiter import limiter
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.errors import RateLimitExceeded
 
 
 app = FastAPI()
 
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 @app.middleware("http")
 async def http_error_handler(request: Request, call_next) -> Response | JSONResponse:
@@ -14,13 +22,11 @@ async def http_error_handler(request: Request, call_next) -> Response | JSONResp
         response = await call_next(request)
         return response
     except Exception as e:
-        content = f"error: {str(e)}"
-        status_code = 500
-        response = JSONResponse(
-            content=content,
-            status_code=status_code,
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Internal server error: {str(e)}"},
         )
-        return response
+    
     
 ### CORS configuration
 origins = [

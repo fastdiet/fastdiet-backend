@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 import secrets
 from fastapi import  Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from app.services.password import verify_password
+from app.core.security import verify_password
 from app.schemas.token import TokenResponse
 from jose import JWTError, jwt
 from app.core.config import get_settings
@@ -11,13 +11,12 @@ from sqlalchemy.orm import Session
 from app.db.db_connection import get_db
 from app.models import User
 from app.crud.refresh_token import create_refresh_token_in_db, get_valid_refresh_token    
-from app.models.refresh_token import RefreshToken
 
 
 settings = get_settings()
 JWT_SECRET_KEY = settings.jwt_secret_key
 JWT_ALGORITHM = settings.jwt_algorithm
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = 15
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/users/login")

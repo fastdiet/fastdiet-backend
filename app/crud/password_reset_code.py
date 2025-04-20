@@ -1,10 +1,10 @@
 
-from datetime import datetime
 from app.models.password_reset_code import PasswordResetCode
+from datetime import datetime
 from sqlalchemy.orm import Session
 
-
-def get_valid_password_reset_code(db: Session, user_id: str, code: str) -> PasswordResetCode | None:
+# Function to get a valid password reset code for a user
+def get_valid_password_reset_code(db : Session, user_id: int, code: str) -> PasswordResetCode | None:
     return db.query(PasswordResetCode).filter(
         PasswordResetCode.user_id == user_id,
         PasswordResetCode.code == code,
@@ -12,7 +12,7 @@ def get_valid_password_reset_code(db: Session, user_id: str, code: str) -> Passw
         PasswordResetCode.used == False
     ).first()
 
-
+# Function to create a new password reset code
 def create_password_reset_code(db: Session, code: str, user_id: int, expires_at: datetime) -> PasswordResetCode:
     db_reset_code = PasswordResetCode(
         code=code,
@@ -24,3 +24,12 @@ def create_password_reset_code(db: Session, code: str, user_id: int, expires_at:
     db.commit()
     db.refresh(db_reset_code)
     return db_reset_code
+
+# Function to mark old password reset codes as used
+def mark_old_reset_codes_as_used(db: Session, user_id: int):
+    db.query(PasswordResetCode).filter(
+        PasswordResetCode.user_id == user_id,
+        PasswordResetCode.used == False,
+        PasswordResetCode.expires_at > datetime.utcnow()
+    ).update({PasswordResetCode.used: True})
+    db.commit()

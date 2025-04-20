@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
 
-class EmailVerification(BaseModel):
+class EmailCode(BaseModel):
     email: EmailStr
     code: str

@@ -1,5 +1,5 @@
 from app.models.email_verification_code import EmailVerificationCode
-from datetime import datetime, timedelta
+from datetime import datetime
 from sqlalchemy.orm import Session
 
 # Function to get a valid email verification code for a user
@@ -32,11 +32,3 @@ def mark_old_verification_codes_as_used(db: Session, user_id: int):
         EmailVerificationCode.expires_at > datetime.utcnow()
     ).update({EmailVerificationCode.used: True})
     db.commit()
-
-# Function to check if a user can send a new verification code
-def can_send_code(db: Session, user_id: int) -> bool:
-    recent_code = db.query(EmailVerificationCode).filter(
-        EmailVerificationCode.user_id == user_id,
-        EmailVerificationCode.created_at >= datetime.utcnow() - timedelta(minutes=2)
-    ).first()
-    return recent_code is None

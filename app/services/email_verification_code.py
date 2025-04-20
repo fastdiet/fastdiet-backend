@@ -3,21 +3,18 @@ import random
 import string
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
-from app.models.email_verification_code import EmailVerificationCode
 from app.models.user import User
 from app.services.email import send_email
 from fastapi import HTTPException
 from app.crud.user import get_user_by_email
-from app.crud.email_verification_code import can_send_code, create_email_verification_code, get_valid_email_verification_code, mark_old_verification_codes_as_used
+from app.crud.email_verification_code import create_email_verification_code, get_valid_email_verification_code, mark_old_verification_codes_as_used
 
 # Function to generate a random confirmation code
 def generate_confirmation_code(length: int = 6) -> str:
     return ''.join(random.choices(string.digits, k=length))
 
 # Function to create a new confirmation code and send it to the user's email
-def create_and_send_code(user: User, db: Session):
-    if not can_send_code(db, user.id):
-        raise HTTPException(status_code=429, detail="Please wait 2 minutes before requesting another code.")
+def create_and_send_verification_code(user: User, db: Session):
     
     code = generate_confirmation_code()
     expires_at = datetime.utcnow() + timedelta(minutes=15)
@@ -43,6 +40,9 @@ def verify_user_email(db: Session, email: EmailStr, code: str) -> None:
     user = get_user_by_email(db, email)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    
+    if user.is_verified:
+        raise HTTPException(status_code=400, detail="Email already verified")
 
     confirmation = get_valid_email_verification_code(db, user.id, code)
 

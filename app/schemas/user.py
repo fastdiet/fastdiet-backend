@@ -1,11 +1,16 @@
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
-from typing import Optional
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from app.utils.validators import validate_password_strength
 
 class UserCreate(BaseModel):
     username: str | None = Field(None, max_length=40)
     email: EmailStr
-    password: str | None = Field(None, min_length=8, max_length=255)
+    password: str
     name: str | None = Field(None, max_length=40)
+
+    @field_validator('password')
+    @classmethod
+    def validate_password(cls, v):
+        return validate_password_strength(v)
 
 class UserResponse(BaseModel):
     id: int
