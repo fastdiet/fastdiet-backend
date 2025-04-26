@@ -15,9 +15,6 @@ def register_user(db: Session, user_data: UserCreate) -> User:
             raise HTTPException(status_code=400, detail="Email already registered")
         if existing_user.username == user_data.username:
             raise HTTPException(status_code=400, detail="Username already taken")
-        
-    if not user_data.password or not user_data.username:
-        raise HTTPException(status_code=400, detail="Username and password are required")
     
     hashed_password = hash_password(user_data.password)
     user_data.password = hashed_password

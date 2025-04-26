@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from app.utils.validators import validate_password_strength
 
 class UserCreate(BaseModel):
-    username: str | None = Field(None, max_length=40)
+    username: str = Field(..., min_length=3, max_length=20)
     email: EmailStr
     password: str
     name: str | None = Field(None, max_length=40)
@@ -21,3 +21,4 @@ class UserResponse(BaseModel):
     is_verified: bool
 
     model_config = ConfigDict(from_attributes=True)
+    
