@@ -24,4 +24,4 @@ class MealItem(Base):
     created_at = Column(TIMESTAMP, server_default=func.now())
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 
-    meal_plan = relationship("MealPlan", back_populates="meals")
+    meal_plan = relationship("MealPlan", back_populates="meal_items")

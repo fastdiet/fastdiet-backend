@@ -22,3 +22,6 @@ class User(Base):
     # Relationships
     user_preferences = relationship("UserPreferences", back_populates="user", uselist=False)
     meal_plans = relationship("MealPlan", back_populates="user")
+    email_verification_codes = relationship("EmailVerificationCode", back_populates="user", cascade="all, delete-orphan")
+    password_reset_codes = relationship("PasswordResetCode", back_populates="user", cascade="all, delete-orphan")
+    refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan")

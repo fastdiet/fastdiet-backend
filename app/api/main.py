@@ -1,9 +1,36 @@
 from fastapi import FastAPI
+from fastapi.requests import Request
+from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
-from app.api. routes import users
+from app.api.routes import users, auth
+from app.core.rate_limiter import limiter
+from slowapi import _rate_limit_exceeded_handler  # type: ignore
+from slowapi.middleware import SlowAPIMiddleware  # type: ignore
+from slowapi.errors import RateLimitExceeded # type: ignore
+from app.db.db_connection import init_db
+
+
+init_db()
 
 app = FastAPI()
 
+app.state.limiter = limiter
+app.add_middleware(SlowAPIMiddleware)
+
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.middleware("http")
+async def http_error_handler(request: Request, call_next) -> Response | JSONResponse:
+    try:
+        response = await call_next(request)
+        return response
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"detail": f"Internal server error: {str(e)}"},
+        )
+    
+    
 ### CORS configuration
 origins = [
     "http://localhost:8081",
@@ -21,6 +48,7 @@ app.add_middleware(
 )
 
 app.include_router(users.router)
+app.include_router(auth.router)
 
 
 
