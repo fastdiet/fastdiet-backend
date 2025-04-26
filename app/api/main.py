@@ -4,9 +4,9 @@ from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import users, auth
 from app.core.rate_limiter import limiter
-from slowapi import _rate_limit_exceeded_handler 
-from slowapi.middleware import SlowAPIMiddleware 
-from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler  # type: ignore
+from slowapi.middleware import SlowAPIMiddleware  # type: ignore
+from slowapi.errors import RateLimitExceeded # type: ignore
 from app.db.db_connection import init_db
 
 
