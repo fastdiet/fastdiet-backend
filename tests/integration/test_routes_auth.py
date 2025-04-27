@@ -2,7 +2,8 @@ from fastapi import HTTPException
 import pytest
 from unittest.mock import ANY, MagicMock, patch
 from http import HTTPStatus
-from app.schemas.token import TokenResponse
+from app.schemas.token import AuthResponse, TokenResponse
+from app.schemas.user import UserResponse
 
 class TestUserLoginEndpoint:
 
@@ -14,16 +15,36 @@ class TestUserLoginEndpoint:
                     "username": "testuser",
                     "password": "SecurePass123!"
                 },
-                TokenResponse(
-                    access_token="access_token",
-                    refresh_token="refresh_token",
-                    token_type="bearer"
+                AuthResponse(
+                    tokens=TokenResponse(
+                        access_token="access_token",
+                        refresh_token="refresh_token",
+                        token_type="bearer"
+                    ),
+                    user=UserResponse(
+                        id=1,
+                        username="testuser",
+                        email="user@example.com",
+                        name="testuser",
+                        auth_method="traditional",
+                        is_verified=True
+                    )
                 ),
                 HTTPStatus.OK,
                 {
-                    "access_token": "access_token",
-                    "refresh_token": "refresh_token",
-                    "token_type": "bearer"
+                    "tokens": {
+                        "access_token": "access_token",
+                        "refresh_token": "refresh_token",
+                        "token_type": "bearer"
+                    },
+                    "user": {
+                        "id": 1,
+                        "username": "testuser",
+                        "email": "user@example.com",
+                        "name": "testuser",
+                        "auth_method": "traditional",
+                        "is_verified": True
+                    }
                 },
                 id="ok_login"
             ),

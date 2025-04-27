@@ -4,7 +4,7 @@ from pydantic import EmailStr
 from sqlalchemy.orm import Session
 from app.db.db_connection import get_db
 from app.core.auth import authenticate_user, get_current_user, refresh_user_token
-from app.schemas.token import TokenResponse
+from app.schemas.token import AuthResponse, TokenResponse
 from app.schemas.user import UserCreate, UserResponse
 from app.schemas.common import SuccessResponse
 from app.schemas.email_verification_code import EmailCode
@@ -20,7 +20,7 @@ from app.services.password import create_and_send_reset_code, reset_user_passwor
 
 router = APIRouter(tags=["auth"])
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=AuthResponse)
 @limiter.limit("5/minute")
 async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Endpoint to login a user and return access and refresh tokens"""

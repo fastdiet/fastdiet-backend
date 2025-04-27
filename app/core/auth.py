@@ -3,7 +3,7 @@ import secrets
 from fastapi import  Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
 from app.core.security import verify_password
-from app.schemas.token import TokenResponse
+from app.schemas.token import AuthResponse, TokenResponse
 from jose import JWTError, jwt
 from app.core.config import get_settings
 from app.crud.user import get_user_by_id, get_user_by_username
@@ -60,7 +60,7 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 # Function to authenticate the user using username and password
-def authenticate_user(db: Session, username: str, password: str) -> TokenResponse:
+def authenticate_user(db: Session, username: str, password: str) -> AuthResponse:
     user = get_user_by_username(db, username)
     if not user or not verify_password(password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -69,11 +69,16 @@ def authenticate_user(db: Session, username: str, password: str) -> TokenRespons
     
     access_token = create_access_token(data={"sub": str(user.id)},)
     refresh_token = create_refresh_token(user.id, db)
-    return TokenResponse(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer",
+
+    return AuthResponse(
+        tokens=TokenResponse(
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+        ),
+        user=user
     )
+
 
 # Function to refresh the access token using a valid refresh token
 def refresh_user_token(db: Session, refresh_token: str) -> TokenResponse:
