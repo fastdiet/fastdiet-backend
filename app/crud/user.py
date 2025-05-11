@@ -1,7 +1,8 @@
 
+from pydantic import EmailStr
 from sqlalchemy.orm import Session
 from app.models import User
-from app.schemas.user import UserCreate
+from app.schemas.user import UserRegister
 
 
 # Function to get a user by username
@@ -24,11 +25,9 @@ def get_user_by_username_or_email(db: Session, email: str, username: str) -> Use
     return existing_user
 
 # Function to create a new user
-def create_user(db: Session, user_data: UserCreate) -> User:
+def create_user(db: Session, user_data: UserRegister) -> User:
     user = User(
-        username=user_data.username,
         email=user_data.email,
-        name=user_data.name,
         hashed_password=user_data.password,
         auth_method="traditional",
         is_verified=False,
@@ -38,3 +37,23 @@ def create_user(db: Session, user_data: UserCreate) -> User:
     db.commit()
     db.refresh(user)
     return user
+
+def create_google_user(db: Session, email: str, sub: str) -> User:
+    user = User(
+        email=email,
+        auth_method="google",
+        sub=sub,
+        is_verified=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+def update_google_user(db: Session, db_user: User, sub: str) -> User:
+    db_user.sub = sub
+    db_user.auth_method = "google"
+    db_user.is_verified = True
+    db.commit()
+    db.refresh(db_user)
+    return db_user

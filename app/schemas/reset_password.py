@@ -3,8 +3,8 @@ from app.utils.validators import validate_password_strength
 
 class ResetPasswordRequest(BaseModel):
     email: EmailStr
-    code: str
     new_password: str
+    code: str
     
     @field_validator('new_password')
     @classmethod

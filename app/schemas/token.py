@@ -9,3 +9,6 @@ class TokenResponse(BaseModel):
 class AuthResponse(BaseModel):
     tokens:  TokenResponse
     user: UserResponse
+
+class RefreshRequest(BaseModel):
+    refresh_token: str

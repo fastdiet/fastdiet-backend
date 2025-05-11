@@ -25,3 +25,10 @@ def get_db():
         yield db
     finally:
         db.close()
+
+def get_sync_session():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
