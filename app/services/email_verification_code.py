@@ -53,3 +53,4 @@ def verify_user_email(db: Session, email: EmailStr, code: str) -> None:
     user.is_verified = True
     db.commit()
     db.refresh(user)
+    return user

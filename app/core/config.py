@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     smtp_port: int
     sender_email: str
     sender_password: str
+    web_client_id: str
     model_config = SettingsConfigDict(env_file=".env")
 
 @lru_cache

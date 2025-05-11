@@ -1,19 +1,44 @@
+from datetime import datetime
 from fastapi import FastAPI
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import users, auth
+from app.api.routes import users, auth, users_preferences
 from app.core.rate_limiter import limiter
 from slowapi import _rate_limit_exceeded_handler  # type: ignore
 from slowapi.middleware import SlowAPIMiddleware  # type: ignore
 from slowapi.errors import RateLimitExceeded # type: ignore
 from app.db.db_connection import init_db
+from contextlib import asynccontextmanager
+from apscheduler.schedulers.background import BackgroundScheduler # type: ignore
+from apscheduler.triggers.cron import CronTrigger  # type: ignore
+from app.services.user import delete_unverified_users
 
 
 init_db()
 
-app = FastAPI()
+scheduler = BackgroundScheduler()
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    scheduler.start()
+    print("🔄 Scheduler started")
+    
+    trigger = CronTrigger(hour=0, minute=0)
+    scheduler.add_job(
+        delete_unverified_users,
+        trigger=trigger,
+        name="delete_unverified_users_job"
+    )
+    
+    yield
+    scheduler.shutdown()
+    print("🛑 Scheduler stopped")
+
+
+app = FastAPI(lifespan=lifespan)
+
+# Limiter Configuration
 app.state.limiter = limiter
 app.add_middleware(SlowAPIMiddleware)
 
@@ -29,7 +54,8 @@ async def http_error_handler(request: Request, call_next) -> Response | JSONResp
             status_code=500,
             content={"detail": f"Internal server error: {str(e)}"},
         )
-    
+
+
     
 ### CORS configuration
 origins = [
@@ -49,6 +75,7 @@ app.add_middleware(
 
 app.include_router(users.router)
 app.include_router(auth.router)
+app.include_router(users_preferences.router)
 
 
 

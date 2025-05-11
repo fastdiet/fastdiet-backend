@@ -32,4 +32,4 @@ def send_email(to_email: EmailStr, subject: str, body: str):
     except EmailNotValidError:
         raise HTTPException(status_code=400, detail="Email not valid")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error sending email: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error sending email")
