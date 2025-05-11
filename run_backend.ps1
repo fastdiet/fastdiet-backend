@@ -1,1 +1,0 @@
-Start-Process powershell -ArgumentList ".\venv\Scripts\activate; uvicorn app.api.main:app --reload --host 0.0.0.0 --port 13000  --log-level debug"
