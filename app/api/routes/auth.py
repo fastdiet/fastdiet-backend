@@ -1,6 +1,5 @@
-from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
-from pydantic import EmailStr
 from sqlalchemy.orm import Session
 from app.db.db_connection import get_db
 from app.core.auth import authenticate_google_user, authenticate_user, get_current_user, refresh_user_token, verify_google_token
@@ -8,7 +7,7 @@ from app.schemas.token import AuthResponse, RefreshRequest, TokenResponse
 from app.schemas.user import EmailRequest, UserRegister, UserResponse
 from app.schemas.common import SuccessResponse
 from app.schemas.email_verification_code import EmailCode
-from app.crud.user import create_google_user, get_user_by_email
+from app.crud.user import get_user_by_email
 from app.models.user import User
 from app.services.email_verification_code import create_and_send_verification_code, verify_user_email
 from app.schemas.reset_password import ResetPasswordRequest

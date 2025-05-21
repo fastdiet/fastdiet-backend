@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey, TIMESTAMP, func
+from sqlalchemy import Column, Enum, Integer, String, Boolean, Float, ForeignKey, TIMESTAMP, func
 from sqlalchemy.orm import relationship
 
 from app.db.db_connection import Base
@@ -9,17 +9,12 @@ class UserPreferences(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"), nullable=False)
     diet_type_id = Column(Integer, ForeignKey('diet_types.id'), nullable=True)
-    vegetarian = Column(Boolean, default=False)
-    vegan = Column(Boolean, default=False)
-    gluten_free = Column(Boolean, default=False)
-    dairy_free = Column(Boolean, default=False)
-    very_healthy = Column(Boolean, default=False)
-    cheap = Column(Boolean, default=False)
     max_ready_min = Column(Integer, nullable=True)
     servings = Column(Integer, nullable=True)
     calories_goal = Column(Float, nullable=True)
     sustainable = Column(Boolean, default=False)
-    low_fodmap = Column(Boolean, default=False)
+    activity_level = Column(Enum('sedentary', 'light', 'moderate', 'high', 'very_high', name='activity_level_enum'), nullable=True)
+    goal = Column(Enum('lose_weight', 'maintain_weight', 'gain_weight', name='goal_enum'), nullable=True)
     created_at = Column(TIMESTAMP, default=func.now())
     updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
     

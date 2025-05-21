@@ -1,5 +1,3 @@
-
-from pydantic import EmailStr
 from sqlalchemy.orm import Session
 from app.models import User
 from app.schemas.user import UserRegister

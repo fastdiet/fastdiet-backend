@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, TIMESTAMP, Boolean, func, Enum
+from sqlalchemy import Column, Float, Integer, String, TIMESTAMP, Boolean, func, Enum
 from sqlalchemy.orm import relationship
 
 from app.db.db_connection import Base
@@ -12,6 +12,10 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     hashed_password = Column(String(255), nullable=True)
     name = Column(String(40), nullable=True)
+    gender = Column(String(10), nullable=True)
+    age = Column(Integer, nullable=True)
+    weight = Column(Float, nullable=True)
+    height = Column(Float, nullable=True)
     auth_method = Column(Enum('google', 'traditional', name='auth_method_types'), nullable=False, default="traditional")
     is_verified = Column(Boolean, default=False)
     spoonacular_username = Column(String(255), nullable=True)

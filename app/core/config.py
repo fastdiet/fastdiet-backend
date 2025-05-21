@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     sender_email: str
     sender_password: str
     web_client_id: str
+    spoonacular_api_key: str
     model_config = SettingsConfigDict(env_file=".env")
 
 @lru_cache

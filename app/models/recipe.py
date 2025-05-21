@@ -33,3 +33,4 @@ class Recipe(Base):
     recipes_dish_types = relationship("RecipesDishType", back_populates="recipe")
     recipes_diet_types = relationship("RecipesDietType", back_populates="recipe")
     recipes_nutrients = relationship("RecipesNutrient", back_populates="recipe")
+    meal_items = relationship("MealItem", back_populates="recipe")
