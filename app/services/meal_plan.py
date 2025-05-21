@@ -5,7 +5,7 @@ from app.crud.diet_type import get_diet_type_by_id
 from app.crud.user_preferences import create_user_preferences, get_user_preferences_by_user_id
 from app.crud.cuisine_region import get_cuisine_regions_by_ids, clear_user_cuisine_preferences, add_cuisine_preference
 from app.crud.intolerance import add_intolerance_preference, get_intolerances_by_ids, clear_user_intolerance_preferences
-
+import spoonacular
 # Function to get or create user preferences
 def get_or_create_user_preferences(db: Session, user_id: int) -> UserPreferences:
     preferences = get_user_preferences_by_user_id(db, user_id)
@@ -14,11 +14,12 @@ def get_or_create_user_preferences(db: Session, user_id: int) -> UserPreferences
     return preferences
 
 # Function to update the goal of the user preferences
-def update_goal_preference(db: Session, user: User, goal: str) -> UserPreferences:
-    preferences = get_or_create_user_preferences(db, user.id)
-    preferences.goal = goal
-    db.commit()
-    db.refresh(preferences)
+def generate_meal_plan_for_user(db: Session, user_id: int) -> MealPlan:
+    preferences = get_user_preferences_by_user_id(db, user_id)
+    if not preferences:
+        raise HTTPException(status_code=404, detail="User preferences not found")
+    
+
     
     return preferences
 
