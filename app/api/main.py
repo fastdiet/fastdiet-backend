@@ -3,7 +3,7 @@ from fastapi import FastAPI
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import users, auth, users_preferences
+from app.api.routes import recipes, users, auth, users_preferences, meal_plans
 from app.core.rate_limiter import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.middleware import SlowAPIMiddleware
@@ -76,6 +76,8 @@ app.add_middleware(
 app.include_router(users.router)
 app.include_router(auth.router)
 app.include_router(users_preferences.router)
+app.include_router(meal_plans.router)
+app.include_router(recipes.router)
 
 
 

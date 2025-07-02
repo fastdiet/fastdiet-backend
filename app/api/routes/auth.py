@@ -22,11 +22,16 @@ router = APIRouter(tags=["auth"])
 
 @router.post("/login", response_model=AuthResponse)
 @limiter.limit("5/minute")
-async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Endpoint to login a user and return access and refresh tokens"""
     return authenticate_user(db, form_data.username, form_data.password)
 
-# Endpoint to login with Google
+@router.post("/login-with-docs", response_model=TokenResponse)
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    auth_response = authenticate_user(db, form_data.username, form_data.password)
+
+    return auth_response.tokens
+
 @router.post("/login-with-google", response_model=AuthResponse)
 def login_with_google(db: Session = Depends(get_db), id_info: dict = Depends(verify_google_token)):
     return authenticate_google_user(db, id_info["email"], id_info["sub"])
@@ -76,7 +81,7 @@ def verify_email(data: EmailCode, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh-token", response_model=TokenResponse)
-@limiter.limit("10/minute")
+@limiter.limit("1/minute")
 def refresh_access_token(request: Request, refresh_request: RefreshRequest, db: Session = Depends(get_db)):
     """Endpoint to refresh the access token using a refresh token"""
     return refresh_user_token(db, refresh_request.refresh_token)

@@ -11,7 +11,7 @@ router = APIRouter(tags=["users_preferences"], prefix="/user_preferences")
 
 
 @router.patch("/goal", response_model=UserPreferencesResponse)
-async def update_goal(
+def update_goal(
     goal_update: GoalUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
@@ -23,46 +23,38 @@ async def update_goal(
     return preferences
 
 @router.patch("/activity-level", response_model=UserPreferencesResponse)
-async def update_activity_level(
+def update_activity_level(
     activity_update: ActivityUpddate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Endpoint to update user's activity level"""
     preferences = update_activity(db, current_user, activity_update.activity_level)
-    preferences = recalculate_calories_if_possible(db, current_user, preferences)
-    
-    return preferences
+    return recalculate_calories_if_possible(db, current_user, preferences)
 
 @router.patch("/diet-type", response_model=UserPreferencesResponse)
-async def update_diet_type(
+def update_diet_type(
     diet_update: DietTypeUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Endpoint to update user's diet type preference"""
-    preferences = update_diet(db, current_user, diet_update.id)
-    
-    return preferences
+    return update_diet(db, current_user, diet_update.id)
 
 @router.patch("/cuisine-types", response_model=UserPreferencesResponse)
-async def update_cuisine_types(
+def update_cuisine_types(
     cuisine_update: CuisineRegionUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Endpoint to update user's cuisine type preferences"""
-    preferences = update_cuisine_preferences(db, current_user, cuisine_update.cuisine_ids)
-    
-    return preferences
+    return update_cuisine_preferences(db, current_user, cuisine_update.cuisine_ids)
 
 @router.patch("/intolerances", response_model=UserPreferencesResponse)
-async def update_intolerances(
+def update_intolerances(
     intolerance_update: IntoleranceUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Endpoint to update user's intoleraces"""
-    preferences = update_intolerance_preferences(db, current_user, intolerance_update.intolerance_ids)
-    
-    return preferences
+    return update_intolerance_preferences(db, current_user, intolerance_update.intolerance_ids)

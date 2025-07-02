@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, ForeignKey, String, TIMESTAMP, func, Enum
+from sqlalchemy import Column, Integer, ForeignKey, TIMESTAMP, func
 from sqlalchemy.orm import relationship
 from app.db.db_connection import Base
 
@@ -9,6 +9,20 @@ class MealItemType(enum.Enum):
     INGREDIENT = "INGREDIENT"
     MENU_ITEM = "MENU_ITEM"
     CUSTOM_FOOD = "CUSTOM_FOOD"
+
+class DayOfWeek(enum.IntEnum):
+    monday = 0
+    tuesday = 1
+    wednesday = 2
+    thursday = 3
+    friday = 4
+    saturday = 5
+    sunday = 6
+
+class MealSlot(enum.IntEnum):
+    breakfast = 0
+    lunch = 1
+    dinner = 2
 
 class MealItem(Base):
     __tablename__ = 'meal_items'

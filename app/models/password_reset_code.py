@@ -1,5 +1,5 @@
 from app.db.db_connection import Base
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, func, TIMESTAMP
+from sqlalchemy import Column, Integer, String, Boolean, ForeignKey, func, TIMESTAMP
 from sqlalchemy.orm import relationship
 
 class PasswordResetCode(Base):
