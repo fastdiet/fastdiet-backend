@@ -7,8 +7,10 @@ class Ingredient(Base):
     __tablename__ = 'ingredients'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    name = Column(String(255), nullable=False)
-    image_url = Column(String(255), nullable=True)
+    spoonacular_id = Column(Integer, nullable=True, unique=True, index=True)
+    name = Column(String(255), nullable=False, index=True, unique=True)
+    image_filename = Column(String(255), nullable=True)
+    aisle = Column(String(100), nullable=True)
     
-    # Relationships
     ingredients_products = relationship("IngredientsProduct", back_populates="ingredient")
+    recipes_ingredients = relationship("RecipesIngredient", back_populates="ingredient")

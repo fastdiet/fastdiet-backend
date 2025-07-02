@@ -18,7 +18,7 @@ from google.auth.transport import requests as google_request
 ACCESS_TOKEN_EXPIRE_MINUTES = 2
 
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login-with-docs")
 
 # Function to create a new access token 
 def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:

@@ -2,11 +2,8 @@ from app.models.badge import Badge
 from app.models.cuisine_region import CuisineRegion
 from app.models.diet_type import DietType
 from app.models.dish_type import DishType
-from app.models.equipment import Equipment
 from app.models.ingredient import Ingredient
 from app.models.ingredients_product import IngredientsProduct
-from app.models.instruction import Instruction
-from app.models.instructions_equipment import InstructionsEquipment
 from app.models.intolerance import Intolerance
 from app.models.meal_item import MealItem
 from app.models.meal_plan import MealPlan
@@ -15,6 +12,7 @@ from app.models.product import Product
 from app.models.products_badge import ProductsBadge
 from app.models.products_nutrient import ProductsNutrient
 from app.models.recipe import Recipe
+from app.models.recipes_ingredient import RecipesIngredient
 from app.models.recipes_cuisine import RecipesCuisine
 from app.models.recipes_diet_type import RecipesDietType
 from app.models.recipes_dish_type import RecipesDishType
