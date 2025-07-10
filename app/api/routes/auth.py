@@ -56,6 +56,7 @@ def register(request: Request, user_data: UserRegister, db: Session = Depends(ge
 def send_verification_code(request: Request, email_request: EmailRequest, db: Session = Depends(get_db)):
     """Endpoint to send a verification code to the user's email"""
     email = email_request.email.strip().lower()
+    print(f"Sending verification code to {email}")
     user = get_user_by_email(db, email)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")

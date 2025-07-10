@@ -11,4 +11,4 @@ class MealPlan(Base):
     updated_at = Column(TIMESTAMP, server_default=func.now(), onupdate=func.now())
 
     user = relationship("User", back_populates="meal_plans")
-    meal_items = relationship("MealItem", back_populates="meal_plan")
+    meal_items = relationship("MealItem", back_populates="meal_plan", cascade="all, delete-orphan",  passive_deletes=True)

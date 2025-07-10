@@ -1,60 +1,106 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
+from app.crud.user_preferences import get_user_preferences_details, user_preferences_to_response
 from app.db.db_connection import get_db
 from app.core.auth import get_current_user
 from app.models.user import User
-from app.services.user_preferences import recalculate_calories_if_possible, update_activity, update_cuisine_preferences, update_diet, update_goal_preference, update_intolerance_preferences
-from app.schemas.user_preferences import ActivityUpddate, CuisineRegionUpdate, GoalUpdate, IntoleranceUpdate, UserPreferencesResponse, DietTypeUpdate
+from app.models.user_preferences import UserPreferences
+from app.models.user_preferences_cuisine import UserPreferencesCuisine
+from app.models.user_preferences_intolerance import UserPreferencesIntolerance
+from app.services.user_preferences import get_or_create_user_preferences, recalculate_calories_if_possible, update_cuisine_preferences, update_diet, update_intolerance_preferences
+from app.schemas.user_preferences import ActivityUpdateResponse, ActivityUpddate, CuisineRegionUpdate, CuisinesUpdateResponse, DietTypeUpdateResponse, GoalUpdate, GoalUpdateResponse, IntoleranceUpdate, IntolerancesUpdateResponse, UserPreferencesResponse, DietTypeUpdate
 
 
 router = APIRouter(tags=["users_preferences"], prefix="/user_preferences")
 
 
-@router.patch("/goal", response_model=UserPreferencesResponse)
+@router.patch("/goal", response_model=GoalUpdateResponse)
 def update_goal(
     goal_update: GoalUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Endpoint to update user's goal"""
-    preferences = update_goal_preference(db, current_user, goal_update.goal)
-    preferences = recalculate_calories_if_possible(db, current_user, preferences)
-    
-    return preferences
+    preferences = get_or_create_user_preferences(db, current_user.id)
 
-@router.patch("/activity-level", response_model=UserPreferencesResponse)
+    preferences.goal = goal_update.goal
+    recalculate_calories_if_possible(db, current_user, preferences)
+
+    db.commit()
+    db.refresh(preferences)
+
+    return GoalUpdateResponse(
+        goal=preferences.goal,
+        calories_goal=preferences.calories_goal
+    )
+    
+
+@router.patch("/activity-level", response_model=ActivityUpdateResponse)
 def update_activity_level(
     activity_update: ActivityUpddate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Endpoint to update user's activity level"""
-    preferences = update_activity(db, current_user, activity_update.activity_level)
-    return recalculate_calories_if_possible(db, current_user, preferences)
+    preferences = get_or_create_user_preferences(db, current_user.id)
+    
+    preferences.activity_level = activity_update.activity_level
+    recalculate_calories_if_possible(db, current_user, preferences)
 
-@router.patch("/diet-type", response_model=UserPreferencesResponse)
+    db.commit()
+    db.refresh(preferences)
+
+    return ActivityUpdateResponse(
+        activity_level=preferences.activity_level,
+        calories_goal=preferences.calories_goal
+    )
+
+@router.patch("/diet-type", response_model=DietTypeUpdateResponse)
 def update_diet_type(
     diet_update: DietTypeUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Endpoint to update user's diet type preference"""
-    return update_diet(db, current_user, diet_update.id)
+    preferences = update_diet(db, current_user, diet_update.id)
+    db.commit()
+    db.refresh(preferences)
+    db.refresh(preferences, attribute_names=['diet_type'])
+    
+    return DietTypeUpdateResponse(diet=preferences.diet_type)
 
-@router.patch("/cuisine-types", response_model=UserPreferencesResponse)
+@router.patch("/cuisine-types", response_model=CuisinesUpdateResponse)
 def update_cuisine_types(
     cuisine_update: CuisineRegionUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Endpoint to update user's cuisine type preferences"""
-    return update_cuisine_preferences(db, current_user, cuisine_update.cuisine_ids)
+    preferences = update_cuisine_preferences(db, current_user, cuisine_update.cuisine_ids)
+    db.commit()
+    
+    updated_preferences = db.query(UserPreferences).filter(UserPreferences.id == preferences.id).options(
+        selectinload(UserPreferences.user_preferences_cuisines).joinedload(UserPreferencesCuisine.cuisine)
+    ).one()
+    
+    return CuisinesUpdateResponse(
+        cuisines=[pref_cuisine.cuisine for pref_cuisine in updated_preferences.user_preferences_cuisines]
+    )
 
-@router.patch("/intolerances", response_model=UserPreferencesResponse)
+@router.patch("/intolerances", response_model=IntolerancesUpdateResponse)
 def update_intolerances(
     intolerance_update: IntoleranceUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Endpoint to update user's intoleraces"""
-    return update_intolerance_preferences(db, current_user, intolerance_update.intolerance_ids)
+    preferences = update_intolerance_preferences(db, current_user, intolerance_update.intolerance_ids)
+    db.commit()
+    
+    updated_preferences = db.query(UserPreferences).filter(UserPreferences.id == preferences.id).options(
+        selectinload(UserPreferences.user_preferences_intolerances).joinedload(UserPreferencesIntolerance.intolerance)
+    ).one()
+    
+    return IntolerancesUpdateResponse(
+        intolerances=[pref_intolerance.intolerance for pref_intolerance in updated_preferences.user_preferences_intolerances]
+    )

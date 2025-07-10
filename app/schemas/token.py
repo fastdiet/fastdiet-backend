@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from app.schemas.user import UserResponse
+from app.schemas.user_preferences import UserPreferencesResponse
 
 class TokenResponse(BaseModel):
     access_token: str | None
@@ -9,6 +10,7 @@ class TokenResponse(BaseModel):
 class AuthResponse(BaseModel):
     tokens:  TokenResponse
     user: UserResponse
+    preferences: UserPreferencesResponse | None = None
 
 class RefreshRequest(BaseModel):
     refresh_token: str

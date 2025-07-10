@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
+from app.crud.user_preferences import get_user_preferences_details
 from app.models import User
 from app.schemas.user import UserRegister, UserUpdate
 from app.core.security import hash_password
@@ -24,27 +25,28 @@ def register_user(db: Session, user_data: UserRegister) -> User:
         user = create_user(db, user_data)
         return user
 
-def update_user(db: Session, current_user: User, user_update: UserUpdate) -> User:
-    if user_update.username:
+def update_user(db: Session, current_user: User, user_update: UserUpdate):
+    updated_fields = user_update.model_dump(exclude_unset=True)
+
+    if "username" in updated_fields:
+        print("New userrname")
         user_with_same_username = get_user_by_username(db, user_update.username)
         if user_with_same_username and user_with_same_username.id != current_user.id:
             raise HTTPException(status_code=400, detail="Username already exists")
-        
-      
-    updated_fields = user_update.model_dump(exclude_none=True)
-    fields_affecting_calories = {"gender", "age", "weight", "height"}
-    affects_calories = any(field in updated_fields for field in fields_affecting_calories)
-      
+    
     for key, value in updated_fields.items():
         setattr(current_user, key, value)
-    db.commit()
-    db.refresh(current_user)
-
+        
+    FIELDS_AFFECTING_CALORIES = {"gender", "age", "weight", "height"}
+    affects_calories = any(field in updated_fields for field in FIELDS_AFFECTING_CALORIES)
+    
+    updated_preferences = None
     if affects_calories:
         preferences = get_or_create_user_preferences(db, current_user.id)
         recalculate_calories_if_possible(db, current_user, preferences)
-        
-    return current_user
+        updated_preferences = preferences
+
+    return current_user, updated_preferences
 
 def delete_unverified_users():
     with next(get_sync_session()) as db:

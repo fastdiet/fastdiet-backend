@@ -21,5 +21,5 @@ class UserPreferences(Base):
     # Relationships
     user = relationship("User", back_populates="user_preferences")
     diet_type = relationship("DietType", back_populates="user_preferences")
-    user_preferences_cuisines = relationship("UserPreferencesCuisine", back_populates="user_preference")
-    user_preferences_intolerances = relationship("UserPreferencesIntolerance", back_populates="user_preference")
+    user_preferences_cuisines = relationship("UserPreferencesCuisine", back_populates="user_preference", cascade="all, delete-orphan",)
+    user_preferences_intolerances = relationship("UserPreferencesIntolerance", back_populates="user_preference", cascade="all, delete-orphan",)
