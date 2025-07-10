@@ -3,6 +3,7 @@ import secrets
 from fastapi import  Depends, HTTPException, Header
 from fastapi.security import OAuth2PasswordBearer
 from app.core.security import verify_password
+from app.crud.user_preferences import get_user_preferences_by_user_id, get_user_preferences_details
 from app.schemas.token import AuthResponse, TokenResponse
 from jose import JWTError, jwt
 from app.core.config import get_settings
@@ -44,12 +45,16 @@ def create_refresh_token(user_id: int, db: Session) -> str:
 
 def verify_google_token(authorization: str = Header(...)):
     try:
+        if not authorization.startswith("Bearer "):
+            raise ValueError("Authorization header must start with 'Bearer '")
+        
         token = authorization.split(" ")[1] 
+        if not token:
+            raise ValueError("Token cannot be empty")
 
         id_info = id_token.verify_oauth2_token(
             token, 
             google_request.Request(), 
-            get_settings().web_client_id
         )
 
         # Verify the token is issued by Google
@@ -98,13 +103,16 @@ def authenticate_user(db: Session, userid: str, password: str) -> AuthResponse:
     access_token = create_access_token(data={"sub": str(user.id)},)
     refresh_token = create_refresh_token(user.id, db)
 
+    preferences = get_user_preferences_details(db, user.id)
+
     return AuthResponse(
         tokens=TokenResponse(
             access_token=access_token,
             refresh_token=refresh_token,
             token_type="bearer",
         ),
-        user=user
+        user=user,
+        preferences=preferences
     )
 
 
@@ -121,13 +129,16 @@ def authenticate_google_user(db: Session, email: str, sub: str) -> AuthResponse:
     # Generate tokens for the user
     access_token = create_access_token(data={"sub": str(db_user.id)})
     refresh_token = create_refresh_token(db_user.id, db)
+    preferences = get_user_preferences_details(db, db_user.id)
 
     return AuthResponse(
         tokens=TokenResponse(
             access_token=access_token,
             refresh_token=refresh_token,
+            token_type="bearer",
         ),
-        user= db_user
+        user= db_user,
+        preferences=preferences
     )
 
 # Function to refresh the access token using a valid refresh token
