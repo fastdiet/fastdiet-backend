@@ -1,6 +1,5 @@
-from fastapi import HTTPException
-from sqlalchemy.orm import Session, selectinload, joinedload
-from app.models import User, UserPreferences
+from sqlalchemy.orm import Session, selectinload
+from app.models import UserPreferences
 from app.models.user_preferences_cuisine import UserPreferencesCuisine
 from app.models.user_preferences_intolerance import UserPreferencesIntolerance
 from app.schemas.user_preferences import UserPreferencesResponse

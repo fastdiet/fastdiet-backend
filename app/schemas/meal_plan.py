@@ -1,18 +1,19 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-class _RecipeShort(BaseModel):
+class RecipeShort(BaseModel):
     id: int | None
     spoonacular_id: int | None
     title: str | None
     image_url: str | None
     ready_min: int | None = None
     calories: float | None = None
+    servings: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
 class _SlotMeal(BaseModel):
     slot: int = Field(..., ge=0, le=2, description="0=Breakfast, 1=Lunch, 2=Dinner")
-    recipe: _RecipeShort
+    recipe: RecipeShort
     model_config = ConfigDict(from_attributes=True)
 
 class _DayMealsGroup(BaseModel):

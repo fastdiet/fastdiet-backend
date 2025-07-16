@@ -1,4 +1,5 @@
 from sqlalchemy.orm import Session
+from app.core.errors import ErrorCode
 from app.models import User, UserPreferences
 from fastapi import HTTPException
 from app.crud.diet_type import get_diet_type_by_id
@@ -55,7 +56,10 @@ def update_diet(db: Session, user: User, diet_id: int):
     if diet_id is not None:
         diet_type = get_diet_type_by_id(db, diet_id)
         if not diet_type:
-            raise HTTPException(status_code=404, detail="Diet type not found")
+            raise HTTPException(
+                status_code=404,
+                detail={"code": ErrorCode.DIET_TYPE_NOT_FOUND, "message": "Diet type not found"}
+            )
     
     preferences = get_or_create_user_preferences(db, user.id)
     preferences.diet_type_id = diet_id
@@ -71,7 +75,10 @@ def update_cuisine_preferences(db: Session, user: User, cuisine_ids: list[int]):
     if unique_cuisine_ids:
         existing_cuisines = get_cuisine_regions_by_ids(db, list(cuisine_ids))
         if len(existing_cuisines) != len(unique_cuisine_ids):
-            raise HTTPException(status_code=404, detail="Cuisine regions not found")
+            raise HTTPException(
+                status_code=404,
+                detail={"code": ErrorCode.CUISINE_REGIONS_NOT_FOUND, "message": "Cuisine regions not found"}
+            )
     
     clear_user_cuisine_preferences(db, preferences.id)
     
@@ -89,7 +96,10 @@ def update_intolerance_preferences(db: Session, user: User, intolerance_ids: lis
     if unique_intolerance_ids:
         existing_intolerances = get_intolerances_by_ids(db, list(unique_intolerance_ids))
         if len(existing_intolerances) != len(unique_intolerance_ids):
-            raise HTTPException(status_code=404, detail="Intolerances not found")
+            raise HTTPException(
+                status_code=404,
+                detail={"code": ErrorCode.INTOLERANCES_NOT_FOUND, "message": "Intolerances not found"}
+            )
     
     clear_user_intolerance_preferences(db, preferences.id)
     

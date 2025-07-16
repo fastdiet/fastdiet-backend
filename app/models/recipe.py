@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Column, Integer, String, Boolean, Float, Text
+from sqlalchemy import JSON, Column, ForeignKey, Integer, String, Boolean, Float, Text
 from sqlalchemy.orm import relationship
 
 from app.db.db_connection import Base
@@ -9,6 +9,7 @@ class Recipe(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     spoonacular_id = Column(Integer, nullable=True, unique=True)
     title = Column(String(255), nullable=False)
+    creator_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     image_url = Column(String(255), nullable=True)
     image_type = Column(String(50), nullable=True)
 
@@ -39,4 +40,5 @@ class Recipe(Base):
     recipes_diet_types = relationship("RecipesDietType", back_populates="recipe", cascade="all, delete-orphan")
     recipes_nutrients = relationship("RecipesNutrient", back_populates="recipe", cascade="all, delete-orphan")
     recipes_ingredients = relationship("RecipesIngredient", back_populates="recipe", cascade="all, delete-orphan")
-    meal_items = relationship("MealItem", back_populates="recipe")
+    meal_items = relationship("MealItem", back_populates="recipe", cascade="all, delete-orphan", passive_deletes=True)
+    creator = relationship("User", back_populates="created_recipes")

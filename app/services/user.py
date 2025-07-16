@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
+from app.core.errors import ErrorCode
 from app.crud.user_preferences import get_user_preferences_details
 from app.models import User
 from app.schemas.user import UserRegister, UserUpdate
@@ -14,7 +15,10 @@ def register_user(db: Session, user_data: UserRegister) -> User:
      existing_user = get_user_by_email(db, user_data.email)
      if existing_user:
         if existing_user.is_verified:
-            raise HTTPException(status_code=400, detail="Email already registered")
+            raise HTTPException(
+                status_code=400,
+                detail={"code": ErrorCode.EMAIL_ALREADY_REGISTERED, "message": "Email already registered"}
+            )
         existing_user.hashed_password = hash_password(user_data.password)
         db.commit()
         db.refresh(existing_user)
@@ -29,10 +33,12 @@ def update_user(db: Session, current_user: User, user_update: UserUpdate):
     updated_fields = user_update.model_dump(exclude_unset=True)
 
     if "username" in updated_fields:
-        print("New userrname")
         user_with_same_username = get_user_by_username(db, user_update.username)
         if user_with_same_username and user_with_same_username.id != current_user.id:
-            raise HTTPException(status_code=400, detail="Username already exists")
+            raise HTTPException(
+                status_code=400,
+                detail={"code": ErrorCode.USERNAME_ALREADY_EXISTS, "message": "Username already exists"}
+            )
     
     for key, value in updated_fields.items():
         setattr(current_user, key, value)

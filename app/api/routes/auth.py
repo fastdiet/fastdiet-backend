@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from app.core.errors import ErrorCode
 from app.db.db_connection import get_db
 from app.core.auth import authenticate_google_user, authenticate_user, get_current_user, refresh_user_token, verify_google_token
 from app.schemas.token import AuthResponse, RefreshRequest, TokenResponse
@@ -59,10 +60,16 @@ def send_verification_code(request: Request, email_request: EmailRequest, db: Se
     print(f"Sending verification code to {email}")
     user = get_user_by_email(db, email)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": ErrorCode.USER_NOT_FOUND, "message": "User not found"}
+        )
 
     if user.is_verified:
-        raise HTTPException(status_code=400, detail="User already verified")
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ErrorCode.USER_ALREADY_VERIFIED, "message": "User already verified"}
+        )
 
     create_and_send_verification_code(user, db)
     return SuccessResponse(success=True, message="Verification code sent")
@@ -95,9 +102,15 @@ def send_reset_code(request: Request, email_request: EmailRequest, db: Session =
     email = email_request.email.strip().lower()
     user = get_user_by_email(db, email)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": ErrorCode.USER_NOT_FOUND, "message": "User not found"}
+        )
     if not user.is_verified:
-        raise HTTPException(status_code=403, detail="You need to verify your email before resetting the password")
+        raise HTTPException(
+            status_code=403,
+            detail={"code": ErrorCode.USER_NOT_VERIFIED_FOR_RESET, "message": "You need to verify your email before resetting the password"}
+        )
     
     create_and_send_reset_code(user, db)
     

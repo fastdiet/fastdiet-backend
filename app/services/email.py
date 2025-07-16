@@ -5,6 +5,7 @@ from email_validator import validate_email, EmailNotValidError
 from fastapi import HTTPException
 from pydantic import EmailStr
 from app.core.config import get_settings
+from app.core.errors import ErrorCode
 
 
 settings = get_settings()
@@ -30,7 +31,13 @@ def send_email(to_email: EmailStr, subject: str, body: str):
 
         return True
     except EmailNotValidError:
-        raise HTTPException(status_code=400, detail="Email not valid")
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ErrorCode.EMAIL_NOT_VALID, "message": "Email not valid"}
+        )
     except Exception as e:
-        print("Error al enviar email:", repr(e))
-        raise HTTPException(status_code=500, detail=f"Error sending email")
+        print("Error sending the email:", repr(e))
+        raise HTTPException(
+            status_code=500,
+            detail={"code": ErrorCode.EMAIL_SEND_ERROR, "message": "Error sending email"}
+        )

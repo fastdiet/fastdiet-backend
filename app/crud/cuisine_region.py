@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 from app.models import CuisineRegion, UserPreferencesCuisine
 from app.crud.user_preferences import get_user_preferences_by_user_id
 
+
 def get_cuisine_regions_by_ids(db: Session, cuisine_ids: list[int] ) ->  list[CuisineRegion]:
     return db.query(CuisineRegion).filter(CuisineRegion.id.in_(cuisine_ids)).all()
 

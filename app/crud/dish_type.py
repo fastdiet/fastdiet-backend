@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-
 from app.models.dish_type import DishType
+
 
 def get_dish_type_by_id(db: Session, id : int ) -> DishType | None:
     return db.query(DishType).filter(DishType.id == id).first()

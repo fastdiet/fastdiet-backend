@@ -2,7 +2,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.crud.cuisine_region import get_or_create_cuisine_region
 from app.crud.diet_type import get_or_create_diet_type
 from app.crud.dish_type import get_or_create_dish_type
-from app.crud.ingredient import get_or_create_ingredient
+from app.crud.ingredient import get_or_create_spoonacular_ingredient
 from app.crud.nutrient import get_or_create_nutrient
 from app.models.recipe import Recipe
 from app.models.recipes_cuisine import RecipesCuisine
@@ -11,6 +11,12 @@ from app.models.recipes_dish_type import RecipesDishType
 from app.models.recipes_ingredient import RecipesIngredient
 from app.models.recipes_nutrient import RecipesNutrient
 
+
+def get_recipe_by_id(db: Session, recipe_id: int) -> Recipe | None:
+    return db.query(Recipe).filter(Recipe.id == recipe_id).first()
+
+def get_recipes_by_creator_id(db: Session, creator_id: int) -> list[Recipe]:
+    return db.query(Recipe).filter(Recipe.creator_id == creator_id).all()
 
 def get_recipe_details(db: Session, recipe_id: int) -> Recipe | None:
     return (
@@ -26,28 +32,79 @@ def get_recipe_details(db: Session, recipe_id: int) -> Recipe | None:
         .first()
     )
 
+def _create_recipe_relationships(db: Session, recipe_id: int, items: list, get_or_create_func: callable, model_class: type, foreign_key_name: str):
+    if not items:
+        return []
+    
+    associations = []
+    for name in items:
+        related_obj = get_or_create_func(db, name)
+        if related_obj:
+            association = model_class(recipe_id=recipe_id)
+            setattr(association, foreign_key_name, related_obj.id)
+            associations.append(association)
 
+    return associations
 
-def get_or_create_recipe(db: Session, recipe_data: dict):
-    recipe = db.query(Recipe).filter_by(spoonacular_id=recipe_data["id"]).first()
+def _create_recipe_nutrients(db: Session, recipe_id: int, nutrients_data: list) -> list[RecipesNutrient]:
+    if not nutrients_data:
+        return []
+    
+    primary_nutrients = {"calories", "fat", "saturated fat", "carbohydrates", "net carbohydrates", "sugar", "protein", "fiber"}
+    recipe_nutrients = []
+    for nutrient_data in nutrients_data:
+        name = nutrient_data.get("name")
+        if name and nutrient_data.get("amount") is not None:
+            is_primary = name.lower() in primary_nutrients
+            db_nutrient = get_or_create_nutrient(db, name, is_primary=is_primary)
+            if db_nutrient:
+                recipe_nutrients.append(RecipesNutrient(
+                    recipe_id=recipe_id,
+                    nutrient_id=db_nutrient.id,
+                    amount=nutrient_data["amount"],
+                    unit=nutrient_data.get("unit")
+                ))
+    return recipe_nutrients
 
-    nutrients = recipe_data.get("nutrition", {}).get("nutrients", [])
-    calories_value = None
+def _create_recipe_ingredients(db: Session, recipe_id: int, ingredients_data: list) -> list[RecipesIngredient]:
+    if not ingredients_data:
+        return []
 
-    for nutrient in nutrients:
-        name = nutrient.get("name")
-        amount = nutrient.get("amount")
-        if name and name.lower() == "calories" and amount is not None:
-            calories_value = amount
+    recipe_ingredients = []
+    for ing_data in ingredients_data:
+        db_ingredient = get_or_create_spoonacular_ingredient(db, ing_data)
+        if db_ingredient:
+            amount = ing_data.get("measures", {}).get("metric", {}).get("amount", ing_data.get("amount", 0.0))
+            unit = ing_data.get("measures", {}).get("metric", {}).get("unitShort", ing_data.get("unit"))
+
+            recipe_ingredients.append(RecipesIngredient(
+                recipe_id=recipe_id,
+                ingredient_id=db_ingredient.id,
+                original_ingredient_name=ing_data.get("original", ing_data.get("originalName")),
+                amount=amount,
+                unit=unit,
+                measures_json=ing_data.get("measures")
+            ))
+    return recipe_ingredients
+
+def get_or_create_spoonacular_recipe(db: Session, recipe_data: dict):
+
+    calories = None
+    for nutrient in recipe_data.get("nutrition", {}).get("nutrients", []):
+        if nutrient.get("name", "").lower() == "calories":
+            calories = nutrient.get("amount")
             break
 
+    recipe = db.query(Recipe).filter_by(spoonacular_id=recipe_data["id"]).first()
     if recipe:
         recipe.title = recipe_data.get("title", recipe.title)
         recipe.summary = recipe_data.get("summary", recipe.summary)
         recipe.image_url = recipe_data.get("image", recipe.image_url)
-        recipe.calories = calories_value if calories_value is not None else recipe.calories
-        db.flush()
-        return recipe
+        recipe.calories = calories if calories is not None else recipe.calories
+
+        db.commit()
+        return get_recipe_details(db, recipe.id)
+    
     new_recipe = Recipe(
         spoonacular_id=recipe_data["id"],
         title=recipe_data.get("title"),
@@ -67,78 +124,21 @@ def get_or_create_recipe(db: Session, recipe_data: dict):
         low_fodmap=recipe_data.get("lowFodmap"),
         preparation_min=recipe_data.get("preparationMinutes"),
         cooking_min=recipe_data.get("cookingMinutes"),
-        calories= calories_value,
+        calories= calories,
         analyzed_instructions=recipe_data.get("analyzedInstructions")
     )
     db.add(new_recipe)
     db.flush()
 
-    if recipe_data.get("cuisines"):
-        for cuisine_name in recipe_data["cuisines"]:
-            cuisine = get_or_create_cuisine_region(db, cuisine_name)
-            if cuisine:
-                db_recipe_cuisine = RecipesCuisine(recipe_id=new_recipe.id, cuisine_id=cuisine.id)
-                db.add(db_recipe_cuisine)
+    all_associations = []
+    all_associations.extend(_create_recipe_relationships(db, new_recipe.id, recipe_data.get("cuisines"), get_or_create_cuisine_region, RecipesCuisine, 'cuisine_id'))
+    all_associations.extend(_create_recipe_relationships(db, new_recipe.id, recipe_data.get("dishTypes"), get_or_create_dish_type, RecipesDishType, 'dish_type_id'))
+    all_associations.extend(_create_recipe_relationships(db, new_recipe.id, recipe_data.get("diets"), get_or_create_diet_type, RecipesDietType, 'diet_type_id'))
+    all_associations.extend(_create_recipe_nutrients(db, new_recipe.id, recipe_data.get("nutrition", {}).get("nutrients", [])))
+    all_associations.extend(_create_recipe_ingredients(db, new_recipe.id, recipe_data.get("extendedIngredients")))
 
-    if recipe_data.get("dishTypes"):
-        for dish_type_name in recipe_data["dishTypes"]:
-            dish_type = get_or_create_dish_type(db, dish_type_name)
-            if dish_type:
-                db_recipe_dish_type = RecipesDishType(recipe_id=new_recipe.id, dish_type_id=dish_type.id)
-                db.add(db_recipe_dish_type)
-
-    if recipe_data.get("diets"):
-        for diet_name in recipe_data["diets"]:
-            diet = get_or_create_diet_type(db, diet_name)
-            if diet:
-                db_recipe_diet = RecipesDietType(recipe_id=new_recipe.id, diet_type_id=diet.id)
-                db.add(db_recipe_diet)
-
-    primary_nutrients = ["calories", "fat", "saturated fat", "carbohydrates", "net carbohydrates", "sugar", "protein", "fiber"]
- 
-    for nutrient in nutrients:
-        name = nutrient.get("name")
-        amount = nutrient.get("amount")
-        unit = nutrient.get("unit")
-
-        if name and amount is not None and unit is not None:
-            is_primary = name.lower() in primary_nutrients
-            db_nutrient = get_or_create_nutrient(db, name, is_primary=is_primary)
-            if db_nutrient:
-                db_recipe_nutrient = RecipesNutrient(
-                    recipe_id=new_recipe.id,
-                    nutrient_id=db_nutrient.id,
-                    amount=amount,
-                    unit=unit
-                )
-                db.add(db_recipe_nutrient)
-
-    if recipe_data.get("extendedIngredients"):
-        for ingredient_data in recipe_data["extendedIngredients"]:
-            db_ingredient = get_or_create_ingredient(db, ingredient_data)
-            
-            if db_ingredient:
-                amount = ingredient_data.get("amount", 0.0)
-                unit = ingredient_data.get("unit")
-                if ingredient_data.get("measures") and ingredient_data["measures"].get("metric"):
-                    amount = ingredient_data["measures"]["metric"].get("amount", 0.0)
-                    unit = ingredient_data["measures"]["metric"].get("unitShort")
-
-                existing_recipe_ingredient = db.query(RecipesIngredient).filter(
-                    RecipesIngredient.recipe_id == new_recipe.id,
-                    RecipesIngredient.ingredient_id == db_ingredient.id
-                ).first()
-                if not existing_recipe_ingredient:
-                    recipe_ingredient_entry = RecipesIngredient(
-                        recipe_id=new_recipe.id,
-                        ingredient_id=db_ingredient.id,
-                        original_ingredient_name=ingredient_data.get("original", ingredient_data.get("originalName")),
-                        amount=amount,
-                        unit=unit,
-                        measures_json=ingredient_data.get("measures")
-                    )
-                    db.add(recipe_ingredient_entry)
-                    db.flush()
+    if all_associations:
+        db.add_all(all_associations)
                
     return new_recipe
 

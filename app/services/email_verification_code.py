@@ -3,6 +3,7 @@ import random
 import string
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
+from app.core.errors import ErrorCode
 from app.models.user import User
 from app.services.email import send_email
 from fastapi import HTTPException
@@ -39,15 +40,24 @@ def create_and_send_verification_code(user: User, db: Session):
 def verify_user_email(db: Session, email: EmailStr, code: str) -> None:
     user = get_user_by_email(db, email)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": ErrorCode.USER_NOT_FOUND, "message": "User not found"}
+        )
     
     if user.is_verified:
-        raise HTTPException(status_code=400, detail="Email already verified")
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ErrorCode.EMAIL_ALREADY_VERIFIED, "message": "Email already verified"}
+        )
 
     confirmation = get_valid_email_verification_code(db, user.id, code)
 
     if not confirmation:
-        raise HTTPException(status_code=400, detail="Invalid or expired code")
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ErrorCode.INVALID_EMAIL_VERIFICATION_CODE, "message": "Invalid or expired code"}
+        )
 
     confirmation.used = True
     user.is_verified = True

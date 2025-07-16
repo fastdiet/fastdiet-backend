@@ -1,6 +1,14 @@
+from fastapi import HTTPException
+from app.core.errors import ErrorCode
+from app.crud.ingredient import get_or_create_ingredient_by_name
+from app.crud.recipe import get_recipe_details
 from app.models.ingredient import Ingredient
 from app.models.nutrient import Nutrient
 from app.models.recipe import Recipe
+from sqlalchemy.orm import Session
+
+from app.models.recipes_ingredient import RecipesIngredient
+from app.schemas.recipe import RecipeCreate
 
 
 def recipe_to_response(db_recipe: Recipe) -> dict:
@@ -72,3 +80,49 @@ def recipe_to_response(db_recipe: Recipe) -> dict:
         "ingredients": ingredients_response,
         "nutrients": nutrients_response
     }
+
+
+def create_recipe_from_user_input(db: Session, recipe_data: RecipeCreate, user_id: int) -> Recipe:
+
+    analyzed_instructions = [step.model_dump() for step in recipe_data.analyzed_instructions] if recipe_data.analyzed_instructions else None
+    new_recipe = Recipe(
+        title=recipe_data.title.strip(),
+        summary=recipe_data.summary.strip() if recipe_data.summary else None,
+        image_url=recipe_data.image_url.strip() if recipe_data.image_url else None,
+        ready_min=recipe_data.ready_min,
+        servings=recipe_data.servings,
+        creator_id=user_id,
+        analyzed_instructions=[{
+            "steps": analyzed_instructions
+        }]
+    )
+    db.add(new_recipe)
+    db.flush()
+
+    recipes_ingredients = []
+    unique_ingredients = set()
+
+    for ing in recipe_data.ingredients:
+        normalized = ing.name.strip().lower()
+        if normalized in unique_ingredients:
+            raise HTTPException(
+                status_code=400,
+                detail={"code": ErrorCode.DUPLICATED_INGREDIENT, "message": f"Duplicated ingredient in request: '{normalized}'"}
+            )
+        
+        unique_ingredients.add(normalized)
+        db_ingredient = get_or_create_ingredient_by_name(db, ing.name)
+
+        recipes_ingredients.append(RecipesIngredient(
+            recipe_id=new_recipe.id,
+            ingredient_id=db_ingredient.id,
+            amount=ing.amount,
+            unit=ing.unit
+        ))
+    
+    db.add_all(recipes_ingredients)
+
+    db.commit()
+    full_recipe = get_recipe_details(db, new_recipe.id)
+    
+    return full_recipe
