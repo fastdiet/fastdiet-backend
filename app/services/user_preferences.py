@@ -4,8 +4,8 @@ from app.models import User, UserPreferences
 from fastapi import HTTPException
 from app.crud.diet_type import get_diet_type_by_id
 from app.crud.user_preferences import create_user_preferences, get_user_preferences_by_user_id
-from app.crud.cuisine_region import get_cuisine_regions_by_ids, clear_user_cuisine_preferences, add_cuisine_preference
-from app.crud.intolerance import add_intolerance_preference, get_intolerances_by_ids, clear_user_intolerance_preferences
+from app.crud.cuisine_region import get_cuisine_regions_by_ids
+from app.crud.intolerance import get_intolerances_by_ids
 
 
 # Function to get or create user preferences
@@ -69,43 +69,48 @@ def update_diet(db: Session, user: User, diet_id: int):
 def update_cuisine_preferences(db: Session, user: User, cuisine_ids: list[int]):
     preferences = get_or_create_user_preferences(db, user.id)
 
-    unique_cuisine_ids = set(cuisine_ids)
+    if not cuisine_ids:
+        preferences.cuisines = []
+        return preferences
+    
     
     # Verify all cuisine IDs exist
-    if unique_cuisine_ids:
-        existing_cuisines = get_cuisine_regions_by_ids(db, list(cuisine_ids))
-        if len(existing_cuisines) != len(unique_cuisine_ids):
-            raise HTTPException(
-                status_code=404,
-                detail={"code": ErrorCode.CUISINE_REGIONS_NOT_FOUND, "message": "Cuisine regions not found"}
-            )
+    existing_cuisines = get_cuisine_regions_by_ids(db, list(set(cuisine_ids)))
+    if len(existing_cuisines) != len(set(cuisine_ids)):
+        raise HTTPException(
+            status_code=404,
+            detail={"code": ErrorCode.CUISINE_REGIONS_NOT_FOUND, "message": "Cuisine regions not found"}
+        )
     
-    clear_user_cuisine_preferences(db, preferences.id)
-    
-    for cuisine_id in unique_cuisine_ids:
-        add_cuisine_preference(db, preferences.id, cuisine_id)
+    preferences.cuisines = existing_cuisines
 
     return preferences
-    
     
 
 def update_intolerance_preferences(db: Session, user: User, intolerance_ids: list[int]):
     preferences = get_or_create_user_preferences(db, user.id)
+
+    if not intolerance_ids:
+        preferences.intolerances = []
+        return preferences
     
-    unique_intolerance_ids = set(intolerance_ids)
-    if unique_intolerance_ids:
-        existing_intolerances = get_intolerances_by_ids(db, list(unique_intolerance_ids))
-        if len(existing_intolerances) != len(unique_intolerance_ids):
-            raise HTTPException(
-                status_code=404,
-                detail={"code": ErrorCode.INTOLERANCES_NOT_FOUND, "message": "Intolerances not found"}
-            )
+    existing_intolerances = get_intolerances_by_ids(db, list(set(intolerance_ids)))
+    if len(existing_intolerances) != len(set(intolerance_ids)):
+        raise HTTPException(
+            status_code=404,
+            detail={"code": ErrorCode.INTOLERANCES_NOT_FOUND, "message": "Intolerances not found"}
+        )
     
-    clear_user_intolerance_preferences(db, preferences.id)
-    
-    for intolerance_id in unique_intolerance_ids:
-        add_intolerance_preference(db, preferences.id, intolerance_id)
+    preferences.intolerances = existing_intolerances
 
     return preferences
-    
+
+def user_has_complex_intolerances(preferences: UserPreferences) -> bool:
+    """ Check if the user has intolerances that do not appear as boolean attributes in recipes (gluten_free, dairy_free)"""
+    simple_intolerances = {"gluten", "dairy"}
+    for intolerance in preferences.intolerances:
+        if intolerance.name.lower() not in simple_intolerances:
+            return True
+    return False
+
     

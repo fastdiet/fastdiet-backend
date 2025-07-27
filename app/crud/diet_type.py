@@ -13,7 +13,7 @@ def get_or_create_diet_type(db: Session, diet_type_name: str) -> DietType | None
         return None
     diet_type = get_diet_type_by_name(db, diet_type_name)
     if not diet_type:
-        diet_type = DietType(name=diet_type_name.capitalize())
+        diet_type = DietType(name=diet_type_name)
         db.add(diet_type)
         db.flush()
 

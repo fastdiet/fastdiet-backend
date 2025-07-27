@@ -1,17 +1,10 @@
 from pydantic import BaseModel, ConfigDict, Field
 
-class RecipeShort(BaseModel):
-    id: int | None
-    spoonacular_id: int | None
-    title: str | None
-    image_url: str | None
-    ready_min: int | None = None
-    calories: float | None = None
-    servings: int | None = None
+from app.schemas.recipe import RecipeShort
 
-    model_config = ConfigDict(from_attributes=True)
 
 class _SlotMeal(BaseModel):
+    meal_item_id: int
     slot: int = Field(..., ge=0, le=2, description="0=Breakfast, 1=Lunch, 2=Dinner")
     recipe: RecipeShort
     model_config = ConfigDict(from_attributes=True)
@@ -25,6 +18,17 @@ class MealPlanResponse(BaseModel):
     id: int | None
     days: list[_DayMealsGroup]
     model_config = ConfigDict(from_attributes=True)
+
+class MealItemCreate(BaseModel):
+    meal_plan_id: int
+    recipe_id: int
+    day_index: int = Field(..., ge=0, le=6, description="0=Monday, 1=Tuesday, ..., 6=Sunday")
+    slot: int = Field(..., ge=0, le=2, description="0=Breakfast, 1=Lunch, 2=Dinner")
+
+class MealItemResponse(BaseModel):
+    meal_item_id: int
+    recipe: RecipeShort
+    slot: int
 
 
 

@@ -10,4 +10,4 @@ class DishType(Base):
     name = Column(String(255), nullable=False)
     
     # Relationships
-    recipes_dish_types = relationship("RecipesDishType", back_populates="dish_type")
+    recipes = relationship("Recipe",secondary="recipes_dish_types", back_populates="dish_types")

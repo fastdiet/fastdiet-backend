@@ -1,7 +1,6 @@
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 from app.core.errors import ErrorCode
-from app.crud.user_preferences import get_user_preferences_details
 from app.models import User
 from app.schemas.user import UserRegister, UserUpdate
 from app.core.security import hash_password
@@ -10,7 +9,7 @@ from app.crud.user import create_user, get_user_by_email, get_user_by_username
 from app.db.db_connection import get_sync_session
 from app.services.user_preferences import get_or_create_user_preferences, recalculate_calories_if_possible
 
-# Function to register a new user
+
 def register_user(db: Session, user_data: UserRegister) -> User:
      existing_user = get_user_by_email(db, user_data.email)
      if existing_user:

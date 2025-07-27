@@ -35,9 +35,9 @@ class Recipe(Base):
     analyzed_instructions = Column(JSON, nullable=True)
     
     
-    recipes_cuisines = relationship("RecipesCuisine", back_populates="recipe", cascade="all, delete-orphan")
-    recipes_dish_types = relationship("RecipesDishType", back_populates="recipe", cascade="all, delete-orphan")
-    recipes_diet_types = relationship("RecipesDietType", back_populates="recipe", cascade="all, delete-orphan")
+    cuisines = relationship("CuisineRegion", secondary="recipes_cuisines", back_populates="recipes")
+    dish_types = relationship("DishType", secondary="recipes_dish_types", back_populates="recipes")
+    diet_types = relationship("DietType", secondary="recipes_diet_types", back_populates="recipes")
     recipes_nutrients = relationship("RecipesNutrient", back_populates="recipe", cascade="all, delete-orphan")
     recipes_ingredients = relationship("RecipesIngredient", back_populates="recipe", cascade="all, delete-orphan")
     meal_items = relationship("MealItem", back_populates="recipe", cascade="all, delete-orphan", passive_deletes=True)

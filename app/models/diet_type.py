@@ -11,4 +11,4 @@ class DietType(Base):
     
     # Relationships
     user_preferences = relationship("UserPreferences", back_populates="diet_type")
-    recipes_diet_types = relationship("RecipesDietType", back_populates="diet_type")
+    recipes = relationship("Recipe", secondary="recipes_diet_types", back_populates="diet_types")

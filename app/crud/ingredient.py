@@ -26,6 +26,7 @@ def get_or_create_spoonacular_ingredient(db: Session, ingredient_data: dict) -> 
             )
         db.add(ingredient)
         db.flush()
+        print(f"CREATED INGREDIENT: {ingredient.id=} {ingredient.name=}")
         return ingredient
     
     updated = False

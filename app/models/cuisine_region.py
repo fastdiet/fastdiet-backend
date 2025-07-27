@@ -10,5 +10,5 @@ class CuisineRegion(Base):
     name = Column(String(255), nullable=False)
     
     # Relationships
-    user_preferences_cuisines = relationship("UserPreferencesCuisine", back_populates="cuisine")
-    recipes_cuisines = relationship("RecipesCuisine", back_populates="cuisine")
+    user_preferences = relationship("UserPreferences", secondary="user_preferences_cuisines", back_populates="cuisines")
+    recipes = relationship("Recipe", secondary="recipes_cuisines", back_populates="cuisines")

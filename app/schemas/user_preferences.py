@@ -1,5 +1,5 @@
 from typing import Literal
-from pydantic import BaseModel, ConfigDict, computed_field
+from pydantic import BaseModel, ConfigDict
 
 class GoalUpdate(BaseModel):
     goal: Literal['lose_weight', 'maintain_weight', 'gain_weight']
@@ -18,36 +18,36 @@ class ActivityUpdateResponse(BaseModel):
 class DietTypeUpdate(BaseModel):
     id: int
 
-class _DietResponse(BaseModel):
+class DietResponse(BaseModel):
     id: int
     name: str
     model_config = ConfigDict(from_attributes=True)
 
 class DietTypeUpdateResponse(BaseModel):
-    diet: _DietResponse | None 
+    diet_type: DietResponse | None 
 
 class CuisineRegionUpdate(BaseModel):
     cuisine_ids: list[int]
 
-class _CuisineResponse(BaseModel):
+class CuisineResponse(BaseModel):
     id: int
     name: str
     model_config = ConfigDict(from_attributes=True)
 
 class CuisinesUpdateResponse(BaseModel):
-    cuisines: list[_CuisineResponse]
+    cuisines: list[CuisineResponse]
 
 
 class IntoleranceUpdate(BaseModel):
     intolerance_ids: list[int]
 
-class _IntoleranceResponse(BaseModel):
+class IntoleranceResponse(BaseModel):
     id: int
     name: str
     model_config = ConfigDict(from_attributes=True)
 
 class IntolerancesUpdateResponse(BaseModel):
-    intolerances: list[_IntoleranceResponse]
+    intolerances: list[IntoleranceResponse]
 
 
 
@@ -61,9 +61,9 @@ class UserPreferencesResponse(BaseModel):
     servings: int | None = None
     calories_goal: float | None = None
     sustainable: bool | None = None
-    diet: _DietResponse | None = None
-    cuisines: list[_CuisineResponse] = []
-    intolerances: list[_IntoleranceResponse] = []
+    diet_type: DietResponse | None = None
+    cuisines: list[CuisineResponse] = []
+    intolerances: list[IntoleranceResponse] = []
     
     model_config = ConfigDict(from_attributes=True)
 
