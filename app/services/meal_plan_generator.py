@@ -23,8 +23,11 @@ class MealPlanConfig:
         MealSlot.LUNCH: 0.40,
         MealSlot.DINNER: 0.35
     }
-    
-    CALORIE_SEARCH_RANGE = 250
+    BALANCE_DIET_ID = 1
+    VEGETARIAN_DIET_ID = 2
+    VEGAN_DIET_ID = 3
+    GLUTEN_FREE_DIET_ID = 4
+    CALORIE_SEARCH_RANGE = 150
     DAYS_IN_PLAN = 5
     RECIPES_TO_FETCH = {
         MealSlot.BREAKFAST: DAYS_IN_PLAN,        
@@ -37,33 +40,27 @@ class MealPlanGenerator:
     def __init__(self, preferences: UserPreferences, spoon_service: SpoonacularService):
         self.preferences = preferences
         self.spoon_service = spoon_service
-        self.base_search_params = self._prepare_base_params(preferences)
-        self.calories_targets = self._get_calories_by_meal(preferences.calories_goal)
+        self.base_search_params = self.prepare_base_params(preferences)
+        self.calories_targets = self.get_calories_by_meal(preferences.calories_goal)
         self.days_in_plan = MealPlanConfig.DAYS_IN_PLAN
 
-    def _prepare_base_params(self, preferences: UserPreferences) :
-        diet = preferences.diet_type.name if preferences.diet_type and preferences.diet_type.id != 1 else None
+    def prepare_base_params(self, preferences: UserPreferences) :
+        diet = preferences.diet_type.name if preferences.diet_type and preferences.diet_type.id != MealPlanConfig.BALANCE_DIET_ID else None
         intolerances = (
             ",".join(
-                i.intolerance.name.lower()
-                for i in preferences.user_preferences_intolerances
-            )
-            if preferences.user_preferences_intolerances
-            else None
+                intolerance.name.lower() for intolerance in preferences.intolerances
+            ) if preferences.intolerances else None
         )
 
         cuisines = (
             ",".join(
-                c.cuisine.name.lower()
-                for c in preferences.user_preferences_cuisines
-            )
-            if preferences.user_preferences_cuisines
-            else None
+                cuisine.name.lower() for cuisine in preferences.cuisines
+            ) if preferences.cuisines else None
         )
 
         return {"diet": diet, "intolerances": intolerances, "cuisines": cuisines}
     
-    def _get_calories_by_meal(self, total: float) -> dict[MealSlot, int]:
+    def get_calories_by_meal(self, total: float) -> dict[MealSlot, int]:
         return { slot: round(total * pct) for slot, pct in MealPlanConfig.CALORIE_PERCENTAGES.items()}
     
     async def _fetch_recipes_for_slot_with_fallback(self, meal_slot: MealSlot, target_calories: int, attempt: int = 1) -> list[dict]:
@@ -85,8 +82,8 @@ class MealPlanGenerator:
         )
         
         if api_result.get("error"):
-             print(f"Spoonacular API error for {meal_slot.name}: {api_result['error']}")
-             return []
+            print(f"Spoonacular API error for {meal_slot.name}: {api_result['error']}")
+            return []
         
 
         recipes = api_result.get("results", [])

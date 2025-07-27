@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from fastapi import HTTPException
+from app.core.errors import ErrorCode
 from app.models.user import User
 from app.models.password_reset_code import PasswordResetCode
 from app.services.email import send_email
@@ -33,11 +34,17 @@ def create_and_send_reset_code(user: User, db: Session):
 def verify_valid_reset_code(db: Session, email: str, code: str) -> tuple[User, PasswordResetCode]:
     user = get_user_by_email(db, email)
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": ErrorCode.USER_NOT_FOUND, "message": "User not found"}
+        )
 
     reset_code = get_valid_password_reset_code(db, user.id, code)
     if not reset_code:
-        raise HTTPException(status_code=400, detail="Invalid or expired reset code")
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ErrorCode.INVALID_RESET_CODE, "message": "Invalid or expired reset code"}
+        )
     
     return user, reset_code
     

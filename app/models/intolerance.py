@@ -10,4 +10,4 @@ class Intolerance(Base):
     name = Column(String(255), nullable=False)
     
     # Relationships
-    user_preferences_intolerances = relationship("UserPreferencesIntolerance", back_populates="intolerance")
+    user_preferences = relationship("UserPreferences", secondary="user_preferences_intolerances", back_populates="intolerances")

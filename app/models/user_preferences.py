@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Enum, Integer, String, Boolean, Float, ForeignKey, TIMESTAMP, func
+from sqlalchemy import Column, Enum, Integer, Boolean, Float, ForeignKey, TIMESTAMP, func
 from sqlalchemy.orm import relationship
 
 from app.db.db_connection import Base
@@ -21,5 +21,5 @@ class UserPreferences(Base):
     # Relationships
     user = relationship("User", back_populates="user_preferences")
     diet_type = relationship("DietType", back_populates="user_preferences")
-    user_preferences_cuisines = relationship("UserPreferencesCuisine", back_populates="user_preference", cascade="all, delete-orphan",)
-    user_preferences_intolerances = relationship("UserPreferencesIntolerance", back_populates="user_preference", cascade="all, delete-orphan",)
+    cuisines = relationship("CuisineRegion", secondary="user_preferences_cuisines", back_populates="user_preferences")
+    intolerances = relationship("Intolerance", secondary="user_preferences_intolerances", back_populates="user_preferences")

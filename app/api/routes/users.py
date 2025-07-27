@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from app.core.errors import ErrorCode
 from app.core.security import hash_password, verify_password
 from app.db.db_connection import get_db
 from app.core.auth import get_current_user
@@ -35,7 +36,10 @@ def change_password(passwords: PasswordUpdate, current_user: User = Depends(get_
 
         return SuccessResponse(success=True, message="Password changed successfully")
     else:
-        raise HTTPException(status_code=400, detail="Incorrect current password")
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ErrorCode.INCORRECT_CURRENT_PASSWORD, "message": "Incorrect current password"}
+        )
 
     
 

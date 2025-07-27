@@ -19,10 +19,6 @@ class DayOfWeek(enum.IntEnum):
     saturday = 5
     sunday = 6
 
-class MealSlot(enum.IntEnum):
-    breakfast = 0
-    lunch = 1
-    dinner = 2
 
 class MealItem(Base):
     __tablename__ = 'meal_items'

@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 import secrets
 from fastapi import  Depends, HTTPException, Header
 from fastapi.security import OAuth2PasswordBearer
+from app.core.errors import ErrorCode
 from app.core.security import verify_password
 from app.crud.user_preferences import get_user_preferences_by_user_id, get_user_preferences_details
 from app.schemas.token import AuthResponse, TokenResponse
@@ -64,15 +65,21 @@ def verify_google_token(authorization: str = Header(...)):
         return {"sub": id_info.get("sub"), "email": id_info.get("email"),}
 
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=f"Invalid token: {str(e)}")
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ErrorCode.INVALID_GOOGLE_TOKEN, "message": "Invalid Google token"}
+        )
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ErrorCode.INVALID_GOOGLE_TOKEN, "message": "Could not verify Google token"}
+        )
 
 # Function to decode the JWT token and extract the user information
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     credentials_exception = HTTPException(
         status_code=401,
-        detail="Could not validate credentials",
+        detail={"code": ErrorCode.INVALID_CREDENTIALS, "message": "Could not validate credentials"},
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
@@ -96,9 +103,15 @@ def authenticate_user(db: Session, userid: str, password: str) -> AuthResponse:
         user = get_user_by_username(db, userid)
 
     if not user or not verify_password(password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="Incorrect username or password")
+        raise HTTPException(
+            status_code=401,
+            detail={"code": ErrorCode.INVALID_CREDENTIALS, "message": "Incorrect username or password"}
+        )
     if not user.is_verified:
-        raise HTTPException(status_code=403, detail="User not verified")
+        raise HTTPException(
+            status_code=403,
+            detail={"code": ErrorCode.USER_NOT_VERIFIED, "message": "User not verified"}
+        )
     
     access_token = create_access_token(data={"sub": str(user.id)},)
     refresh_token = create_refresh_token(user.id, db)
@@ -145,11 +158,17 @@ def authenticate_google_user(db: Session, email: str, sub: str) -> AuthResponse:
 def refresh_user_token(db: Session, refresh_token: str) -> TokenResponse:
     db_token = get_valid_refresh_token(db, refresh_token)
     if not db_token:
-        raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
+        raise HTTPException(
+            status_code=401,
+            detail={"code": ErrorCode.INVALID_OR_EXPIRED_REFRESH_TOKEN, "message": "Invalid or expired refresh token"}
+        )
     
     user = get_user_by_id(db, db_token.user_id)
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise HTTPException(
+            status_code=401,
+            detail={"code": ErrorCode.INVALID_TOKEN, "message": "Invalid token"}
+        )
     
     revoke_all_refresh_tokens(db, user.id)
 

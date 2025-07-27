@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
-from app.models import CuisineRegion, UserPreferencesCuisine
-from app.crud.user_preferences import get_user_preferences_by_user_id
+from app.models import CuisineRegion
+
 
 def get_cuisine_regions_by_ids(db: Session, cuisine_ids: list[int] ) ->  list[CuisineRegion]:
     return db.query(CuisineRegion).filter(CuisineRegion.id.in_(cuisine_ids)).all()
@@ -22,25 +22,4 @@ def get_or_create_cuisine_region(db: Session, cuisine_name: str) -> CuisineRegio
         db.flush()
     return cuisine
 
-def get_user_cuisine_preferences(db: Session, user_id: int) -> list[UserPreferencesCuisine]:
-    preferences = get_user_preferences_by_user_id(db, user_id)
-    if not preferences:
-        return []
-    
-    return db.query(UserPreferencesCuisine).filter(
-        UserPreferencesCuisine.preference_id == preferences.id
-    ).all()
 
-
-def add_cuisine_preference(db: Session, preference_id: int, cuisine_id: int) -> UserPreferencesCuisine:
-    cuisine_preference = UserPreferencesCuisine(
-        preference_id=preference_id,
-        cuisine_id=cuisine_id
-    )
-    db.add(cuisine_preference)
-    return cuisine_preference
-
-def clear_user_cuisine_preferences(db: Session, preference_id: int) -> None:
-    db.query(UserPreferencesCuisine).filter(
-        UserPreferencesCuisine.preference_id == preference_id
-    ).delete()
