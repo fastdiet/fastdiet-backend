@@ -10,9 +10,9 @@ Base = declarative_base()
 
 def init_db():
     global engine, SessionLocal
-    from app.core.config import get_settings  # Importa dentro para evitar errores en tests
+    from app.core.config import get_settings
     db_url = get_settings().database_url
-    engine = create_engine(db_url, echo=True)
+    engine = create_engine(db_url, echo=False)
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 

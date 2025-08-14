@@ -1,5 +1,8 @@
+import logging
+import random
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, selectinload
+from app.core.meal_plan_config import MealPlanConfig, MealSlot
 from app.crud.cuisine_region import get_or_create_cuisine_region
 from app.crud.dish_type import get_or_create_dish_type
 from app.crud.ingredient import get_or_create_spoonacular_ingredient
@@ -13,9 +16,10 @@ from app.models.recipes_ingredient import RecipesIngredient
 from app.models.recipes_nutrient import RecipesNutrient
 from app.models.user_preferences import UserPreferences
 
-from app.services.diet_types import get_or_create_diet_objects
-from app.services.meal_plan_generator import MealPlanConfig, MealSlot
+from app.services.diet_types import get_or_create_diet_objects, normalize_diets
+from app.utils.translator import translate_analyzed_instructions, translate_text
 
+logger = logging.getLogger(__name__)
 
 def get_recipe_by_id(db: Session, recipe_id: int) -> Recipe | None:
     return db.query(Recipe).filter(Recipe.id == recipe_id).first()
@@ -43,20 +47,26 @@ def get_recipe_details(db: Session, recipe_id: int) -> Recipe | None:
     )
 
 def get_recipe_suggestions_from_db(
-    db: Session, exclude_recipe_ids: set[int], preferences: UserPreferences, min_calories: float, max_calories: float, limit: int, meal_slot: MealSlot
+    db: Session,
+    exclude_recipe_ids: set[int],
+    preferences: UserPreferences,
+    db_dish_types: list[str], limit: int, 
+    min_calories: float | None, max_calories: float | None
 ):
 
     query = db.query(Recipe).filter(
         Recipe.id.notin_(exclude_recipe_ids),
-        Recipe.calories.between(min_calories, max_calories),
         Recipe.spoonacular_id.isnot(None),
         Recipe.creator_id.is_(None),
     )
 
-    desired_dish_type = "Breakfast" if meal_slot == MealSlot.BREAKFAST else "Main course"
 
-    # Filter by dish type
-    query = query.join(RecipesDishType).join(DishType).filter(DishType.name == desired_dish_type)
+    if min_calories is not None and max_calories is not None:
+        query = query.filter(Recipe.calories.between(min_calories, max_calories))
+
+    
+    query = query.join(RecipesDishType).join(DishType).filter(DishType.name.in_(db_dish_types))
+
     
     # Filter by diet
     if preferences.diet_type_id != MealPlanConfig.BALANCE_DIET_ID:
@@ -82,6 +92,20 @@ def get_recipe_suggestions_from_db(
                     Recipe.gluten_free == True
                 )
             )
+        elif preferences.diet_type_id == MealPlanConfig.DAIRY_FREE_DIET_ID:
+            query = query.join(RecipesDietType, isouter=True).filter(
+                or_(
+                    RecipesDietType.diet_type_id == preferences.diet_type_id,
+                    Recipe.dairy_free == True
+                )
+            )
+        elif preferences.diet_type_id == MealPlanConfig.LOW_FODMAP_DIET_ID:
+            query = query.join(RecipesDietType, isouter=True).filter(
+                or_(
+                    RecipesDietType.diet_type_id == preferences.diet_type_id,
+                    Recipe.low_fodmap == True
+                )
+            )
         else:
             query = query.join(RecipesDietType).filter(RecipesDietType.diet_type_id == preferences.diet_type_id)
 
@@ -97,9 +121,16 @@ def get_recipe_suggestions_from_db(
     # Filter by cuisines
     if preferences.cuisines:
         cuisine_ids = [cuisine.id for cuisine in preferences.cuisines]
-        query = query.join(Recipe.cuisines).filter(CuisineRegion.id.in_(cuisine_ids))
-
-    return query.distinct().order_by(func.random()).limit(limit).all()
+        query = query.outerjoin(Recipe.cuisines).filter(
+            or_(
+                CuisineRegion.id.in_(cuisine_ids),
+                CuisineRegion.id.is_(None)
+            )
+        )
+    fetch_limit = max(limit * 2, 20)
+    potential_recipes = query.distinct().limit(fetch_limit).all()
+    random.shuffle(potential_recipes)
+    return potential_recipes[:limit]
     
 
 def _create_recipe_nutrients(db: Session, recipe_id: int, nutrients_data: list) -> list[RecipesNutrient]:
@@ -159,15 +190,29 @@ def get_or_create_spoonacular_recipe(db: Session, recipe_data: dict):
         if nutrient.get("name", "").lower() == "calories":
             calories = nutrient.get("amount")
             break
+
+    title_en = recipe_data.get("title")
+    summary_en = recipe_data.get("summary") 
+    instructions_en = recipe_data.get("analyzedInstructions")
+
+    try:
+        title_es = translate_text(title_en, target_language='es')
+        summary_es = translate_text(summary_en, target_language='es')
+        instructions_es = translate_analyzed_instructions(instructions_en)
+    except Exception as e:
+        logger.error("Error tanslating some field of the spoonacular recipe")
+        title_es = None
+        summary_es = None
+        instructions_es = None
     
     new_recipe = Recipe(
         spoonacular_id=recipe_data["id"],
-        title=recipe_data.get("title"),
+        title=title_en,
         image_url=recipe_data.get("image"),
         image_type=recipe_data.get("imageType"),
         ready_min=recipe_data.get("readyInMinutes"),
         servings=recipe_data.get("servings"),
-        summary=recipe_data.get("summary"),
+        summary=summary_en,
         vegetarian=recipe_data.get("vegetarian"),
         vegan=recipe_data.get("vegan"),
         gluten_free=recipe_data.get("glutenFree"),
@@ -180,7 +225,11 @@ def get_or_create_spoonacular_recipe(db: Session, recipe_data: dict):
         preparation_min=recipe_data.get("preparationMinutes"),
         cooking_min=recipe_data.get("cookingMinutes"),
         calories= calories,
-        analyzed_instructions=recipe_data.get("analyzedInstructions")
+        analyzed_instructions=instructions_en,
+        title_es=title_es,
+        summary_es=summary_es,
+        analyzed_instructions_es=instructions_es,
+
     )
 
     dish_type_names = set(recipe_data.get("dishTypes", []))
@@ -194,9 +243,9 @@ def get_or_create_spoonacular_recipe(db: Session, recipe_data: dict):
         new_recipe.cuisines = [obj for obj in cuisine_objects if obj is not None]
 
     api_diets = recipe_data.get("diets", [])
+    api_diets = normalize_diets(api_diets, recipe_data)
     if api_diets:
         new_recipe.diet_types = get_or_create_diet_objects(db, api_diets)
-
 
     db.add(new_recipe)
     db.flush()

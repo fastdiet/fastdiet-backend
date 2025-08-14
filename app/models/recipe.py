@@ -9,6 +9,7 @@ class Recipe(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     spoonacular_id = Column(Integer, nullable=True, unique=True)
     title = Column(String(255), nullable=False)
+    title_es = Column(String(255), nullable=True)
     creator_id = Column(Integer, ForeignKey('users.id'), nullable=True)
     image_url = Column(String(255), nullable=True)
     image_type = Column(String(50), nullable=True)
@@ -16,6 +17,7 @@ class Recipe(Base):
     ready_min = Column(Integer, nullable=True)
     servings = Column(Integer, nullable=True)
     summary = Column(Text, nullable=True)
+    summary_es = Column(Text, nullable=True)
 
 
     vegetarian = Column(Boolean, nullable=True)
@@ -33,6 +35,7 @@ class Recipe(Base):
     calories = Column(Float, nullable=True)
 
     analyzed_instructions = Column(JSON, nullable=True)
+    analyzed_instructions_es = Column(JSON, nullable=True)
     
     
     cuisines = relationship("CuisineRegion", secondary="recipes_cuisines", back_populates="recipes")

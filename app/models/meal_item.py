@@ -1,5 +1,5 @@
 import enum
-from sqlalchemy import Column, Integer, ForeignKey, TIMESTAMP, func
+from sqlalchemy import Column, Integer, ForeignKey, TIMESTAMP, String, func
 from sqlalchemy.orm import relationship
 from app.db.db_connection import Base
 
@@ -26,6 +26,7 @@ class MealItem(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     day = Column(Integer, nullable=False)
     slot = Column(Integer, nullable=False)
+    meal_type = Column(String(50), nullable=False)
     meal_plan_id = Column(Integer, ForeignKey('meal_plans.id', ondelete="CASCADE"), nullable=False)
     recipe_id = Column(Integer, ForeignKey('recipes.id', ondelete="CASCADE"), nullable=False)
     created_at = Column(TIMESTAMP, server_default=func.now())
