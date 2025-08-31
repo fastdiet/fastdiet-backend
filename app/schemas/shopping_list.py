@@ -1,5 +1,3 @@
-
-
 from typing import Any
 from pydantic import BaseModel
 
@@ -7,8 +5,8 @@ from pydantic import BaseModel
 class ShoppingListItem(BaseModel):
     name: str
     measures: dict[str, Any]
-    pantryItem: bool
-    aisle: str
+    pantryItem: bool | None = False
+    aisle: str | None = None
     cost: float
     ingredientId: int | None = None
     image_filename: str | None = None

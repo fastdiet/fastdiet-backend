@@ -1,8 +1,8 @@
 import logging
 import random
-from sqlalchemy import func, or_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, selectinload
-from app.core.meal_plan_config import MealPlanConfig, MealSlot
+from app.core.meal_plan_config import MealPlanConfig
 from app.crud.cuisine_region import get_or_create_cuisine_region
 from app.crud.dish_type import get_or_create_dish_type
 from app.crud.ingredient import get_or_create_spoonacular_ingredient
@@ -60,14 +60,11 @@ def get_recipe_suggestions_from_db(
         Recipe.creator_id.is_(None),
     )
 
-
     if min_calories is not None and max_calories is not None:
         query = query.filter(Recipe.calories.between(min_calories, max_calories))
 
-    
     query = query.join(RecipesDishType).join(DishType).filter(DishType.name.in_(db_dish_types))
 
-    
     # Filter by diet
     if preferences.diet_type_id != MealPlanConfig.BALANCE_DIET_ID:
         if preferences.diet_type_id == MealPlanConfig.VEGETARIAN_DIET_ID:
@@ -130,7 +127,7 @@ def get_recipe_suggestions_from_db(
     fetch_limit = max(limit * 2, 20)
     potential_recipes = query.distinct().limit(fetch_limit).all()
     random.shuffle(potential_recipes)
-    return potential_recipes[:limit]
+    return potential_recipes[:limit*2]
     
 
 def _create_recipe_nutrients(db: Session, recipe_id: int, nutrients_data: list) -> list[RecipesNutrient]:

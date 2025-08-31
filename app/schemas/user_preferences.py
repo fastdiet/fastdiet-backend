@@ -50,7 +50,6 @@ class IntolerancesUpdateResponse(BaseModel):
     intolerances: list[IntoleranceResponse]
 
 
-
 class UserPreferencesResponse(BaseModel):
     id: int
     user_id: int

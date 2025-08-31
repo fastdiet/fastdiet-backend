@@ -8,13 +8,10 @@ from app.schemas.user import UserResponse
 class TestUserLoginEndpoint:
 
     @pytest.mark.parametrize(
-        "user_input, mocked_response, expected_status, expected_response",
+        "user_input, mocked_service_response, expected_status, expected_json_response",
         [
             pytest.param(
-                {
-                    "username": "testuser",
-                    "password": "SecurePass123!"
-                },
+                { "username": "testuser", "password": "SecurePass123!" },
                 AuthResponse(
                     tokens=TokenResponse(
                         access_token="access_token",
@@ -27,8 +24,13 @@ class TestUserLoginEndpoint:
                         email="user@example.com",
                         name="testuser",
                         auth_method="traditional",
-                        is_verified=True
-                    )
+                        is_verified=True,
+                        age=None,
+                        gender=None,
+                        weight=None,
+                        height=None
+                    ),
+                    preferences=None
                 ),
                 HTTPStatus.OK,
                 {
@@ -43,8 +45,13 @@ class TestUserLoginEndpoint:
                         "email": "user@example.com",
                         "name": "testuser",
                         "auth_method": "traditional",
-                        "is_verified": True
-                    }
+                        "is_verified": True,
+                        "age": None,
+                        "gender": None,
+                        "weight": None,
+                        "height": None
+                    },
+                    "preferences": None
                 },
                 id="ok_login"
             ),
@@ -55,12 +62,10 @@ class TestUserLoginEndpoint:
                 },
                 HTTPException(
                     status_code=HTTPStatus.UNAUTHORIZED,
-                    detail="Invalid credentials"
+                    detail={"code": "INVALID_CREDENTIALS", "message": "Incorrect username or password"}
                 ),
                 HTTPStatus.UNAUTHORIZED,
-                {
-                    "detail": "Invalid credentials"
-                },
+                {"detail": {"code": "INVALID_CREDENTIALS", "message": "Incorrect username or password"}},
                 id="error_invalid_credentials"
             ),
             pytest.param(
@@ -70,22 +75,20 @@ class TestUserLoginEndpoint:
                 },
                 HTTPException(
                     status_code=HTTPStatus.FORBIDDEN,
-                    detail="User not verified"
+                    detail={"code": "USER_NOT_VERIFIED", "message": "User not verified"}
                 ),
                 HTTPStatus.FORBIDDEN,
-                {
-                    "detail": "User not verified"
-                },
+                {"detail": {"code": "USER_NOT_VERIFIED", "message": "User not verified"}},
                 id="error_unverified_user"
             ),
         ]
     )
-    def test_login_user(self, client, user_input, mocked_response, expected_status, expected_response):
+    def test_login_user(self, client, user_input, mocked_service_response, expected_status, expected_json_response):
         with patch("app.api.routes.auth.authenticate_user") as mock_auth:
-            if isinstance(mocked_response, HTTPException):
-                mock_auth.side_effect = mocked_response 
+            if isinstance(mocked_service_response, HTTPException):
+                mock_auth.side_effect = mocked_service_response 
             else:
-                mock_auth.return_value = mocked_response 
+                mock_auth.return_value = mocked_service_response 
             
             response = client.post(
                 "/login",
@@ -94,165 +97,135 @@ class TestUserLoginEndpoint:
             )
 
             assert response.status_code == expected_status
-            assert response.json() == expected_response
+            assert response.json() == expected_json_response
 
             mock_auth.assert_called_once_with(ANY, user_input["username"], user_input["password"])
 
 class TestUserRegisterEndpoint:
 
     @pytest.mark.parametrize(
-        "user_input, mocked_response, expected_status, expected_response",
+        "user_input, mocked_service_response, expected_status, expected_json_response",
         [
             pytest.param(
-                {
-                    "email": "test@example.com",
-                    "username": "testuser",
-                    "password": "SecurePass123!",
-                    "name": "Test User"
-                },
-                {
-                    "id": 1,
-                    "email": "test@example.com",
-                    "username": "testuser",
-                    "name": "Test User",
-                    "auth_method": "traditional",
-                    "is_verified": False
-                },
+                {"email": "test@example.com", "password": "SecurePass123!"},
+                UserResponse(
+                    id=1,
+                    email="test@example.com",
+                    username=None,
+                    name=None,
+                    auth_method="traditional",
+                    is_verified=False,
+                    age=None,
+                    gender=None,
+                    weight=None,
+                    height=None
+                ),
                 HTTPStatus.CREATED,
-                 {
-                    "id": 1,
-                    "email": "test@example.com",
-                    "username": "testuser",
-                    "name": "Test User",
-                    "auth_method": "traditional",
-                    "is_verified": False
-                },
+                {"id": 1, "email": "test@example.com", "username": None, "name": None, "age": None, "gender": None, "weight": None, "height": None, "auth_method": "traditional", "is_verified": False},
                 id="ok_register"
             ),
             pytest.param(
-                {
-                    "email": "test@example.com",
-                    "username": "anotheruser",
-                    "password": "SecurePass123!",
-                    "name": "Another User"
-                },
+                {"email": "exists@example.com", "password": "SecurePass123!"},
                 HTTPException(
                     status_code=HTTPStatus.BAD_REQUEST,
-                    detail="Email already exists" 
+                    detail={"code": "EMAIL_ALREADY_REGISTERED", "message": "Email already registered"} 
                 ),
                 HTTPStatus.BAD_REQUEST,
-                {
-                    "detail": "Email already exists"
-                },
+                {"detail": {"code": "EMAIL_ALREADY_REGISTERED", "message": "Email already registered"}},
                 id="error_email_exists"
             )
-
         ]
     )
-    def test_register_user(self, client, user_input, mocked_response, expected_status, expected_response):
+    def test_register_user(self, client, user_input, mocked_service_response, expected_status, expected_json_response):
         with patch("app.api.routes.auth.register_user") as mock_register:
-            if isinstance(mocked_response, HTTPException):
-                mock_register.side_effect = mocked_response
+            if isinstance(mocked_service_response, HTTPException):
+                mock_register.side_effect = mocked_service_response
             else:
-                mock_register.return_value = mocked_response
+                mock_register.return_value = mocked_service_response
 
             response = client.post("/register", json=user_input)
 
             assert response.status_code == expected_status
-            assert response.json() == expected_response
+            assert response.json() == expected_json_response
 
 
-    class TestSendVerificationCode:
+class TestSendVerificationCode:
+    @pytest.mark.parametrize("email, mocked_user_lookup, expected_status, expected_json_response",
+        [
+            pytest.param(
+                "new@example.com",
+                MagicMock(is_verified=False),
+                200,
+                {"success": True, "message": "Verification code sent"},
+                id="success"
+            ),
+            pytest.param(
+                "notfound@example.com",
+                None,
+                404,
+                {"detail": {"code": "USER_NOT_FOUND", "message": "User not found"}},
+                id="error_not_found"
+            ),
+            pytest.param(
+                "verified@example.com",
+                MagicMock(is_verified=True),
+                400,
+                {"detail": {"code": "USER_ALREADY_VERIFIED", "message": "User already verified"}},
+                id="error_already_verified"
+            ),
+        ]
+    )
+    def test_send_verification_code(self, client, email, mocked_user_lookup, expected_status, expected_json_response):
+        with patch("app.api.routes.auth.get_user_by_email") as mock_get_user, \
+            patch("app.api.routes.auth.create_and_send_verification_code") as mock_send_code:
+            
+            mock_get_user.return_value = mocked_user_lookup
+            
+            response = client.post("/send-verification-code", json={"email": email})
 
-        @pytest.mark.parametrize(
-            "email, mocked_user, expected_status, expected_detail",
-            [
-                pytest.param(
-                    "testuser@example.com",
-                    MagicMock(is_verified=False),
-                    200,
-                    None,
-                    id="success_send_verification_code"
-                ),
-                pytest.param(
-                    "nonexistent@example.com",
-                    None,
-                    404,
-                    "User not found",
-                    id="error_user_not_found"
-                ),
-                pytest.param(
-                    "alreadyverified@example.com",
-                    MagicMock(is_verified=True),
-                    400,
-                    "User already verified",
-                    id="error_user_already_verified"
-                ),
-            ]
-        )
-        def test_send_verification_code(self, client, email, mocked_user, expected_status, expected_detail):
-            with patch("app.api.routes.auth.get_user_by_email") as mock_get_user_by_email, \
-                patch("app.api.routes.auth.create_and_send_verification_code") as mock_create_and_send_verification_code:
-                
-                mock_get_user_by_email.return_value = mocked_user
+            assert response.status_code == expected_status
+            assert response.json() == expected_json_response
 
-                response = client.post("/send-verification-code", params={"email": email})
+            if expected_status == 200:
+                mock_send_code.assert_called_once_with(mocked_user_lookup, ANY, ANY)
 
-                assert response.status_code == expected_status
+class TestSendResetCode:
 
-                if expected_status == 200:
-                    json_response = response.json()
-                    assert json_response["success"] is True
-                    assert json_response["message"] == "Verification code sent."
-                    mock_create_and_send_verification_code.assert_called_once_with(mocked_user, ANY)
-                else:
-                    json_response = response.json()
-                    assert json_response["detail"] == expected_detail
+    @pytest.mark.parametrize("email, mocked_user_lookup, expected_status, expected_json_response",
+        [
+            pytest.param(
+                "verified@example.com",
+                MagicMock(is_verified=True),
+                200,
+                {"success": True, "message": "Reset code sent successfully"},
+                id="success"
+            ),
+            pytest.param(
+                "notfound@example.com",
+                None,
+                404,
+                {"detail": {"code": "USER_NOT_FOUND", "message": "User not found"}},
+                id="error_not_found"
+            ),
+            pytest.param(
+                "unverified@example.com",
+                MagicMock(is_verified=False),
+                403,
+                {"detail": {"code": "USER_NOT_VERIFIED_FOR_RESET", "message": "You need to verify your email before resetting the password"}},
+                id="error_not_verified"
+            ),
+        ]
+    )
+    def test_send_reset_code(self, client, email, mocked_user_lookup, expected_status, expected_json_response):
+        with patch("app.api.routes.auth.get_user_by_email") as mock_get_user, \
+            patch("app.api.routes.auth.create_and_send_reset_code") as mock_send_code:
+            
+            mock_get_user.return_value = mocked_user_lookup
 
-    class TestSendResetCode:
+            response = client.post("/send-reset-code", json={"email": email})
 
-        @pytest.mark.parametrize(
-            "email, mocked_user, expected_status, expected_detail",
-            [
-                pytest.param(
-                    "verifieduser@example.com",
-                    MagicMock(is_verified=True),
-                    200,
-                    None,
-                    id="success_send_reset_code"
-                ),
-                pytest.param(
-                    "nonexistent@example.com",
-                    None,
-                    404,
-                    "User not found",
-                    id="error_user_not_found"
-                ),
-                pytest.param(
-                    "unverifieduser@example.com",
-                    MagicMock(is_verified=False),
-                    403,
-                    "You need to verify your email before resetting the password",
-                    id="error_user_not_verified"
-                ),
-            ]
-        )
-        def test_send_reset_code(self, client, email, mocked_user, expected_status, expected_detail):
+            assert response.status_code == expected_status
+            assert response.json() == expected_json_response
 
-            with patch("app.api.routes.auth.get_user_by_email") as mock_get_user_by_email, \
-                patch("app.api.routes.auth.create_and_send_reset_code") as mock_create_and_send_reset_code:
-                
-                mock_get_user_by_email.return_value = mocked_user
-
-                response = client.post("/send-reset-code", params={"email": email})
-
-                assert response.status_code == expected_status
-
-                if expected_status == 200:
-                    json_response = response.json()
-                    assert json_response["success"] is True
-                    assert json_response["message"] == "Reset code sent successfully"
-                    mock_create_and_send_reset_code.assert_called_once_with(mocked_user, ANY)
-                else:
-                    json_response = response.json()
-                    assert json_response["detail"] == expected_detail
+            if expected_status == 200:
+                mock_send_code.assert_called_once_with(mocked_user_lookup, ANY, ANY)

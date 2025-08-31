@@ -7,7 +7,7 @@ from app.crud.recipe import get_recipe_details
 from app.models.recipe import Recipe
 from sqlalchemy.orm import Session
 from app.models.recipes_ingredient import RecipesIngredient
-from app.schemas.recipe import RecipeCreate, RecipeDetailResponse, RecipeIngredientDetail, RecipeShort
+from app.schemas.recipe import RecipeCreate, RecipeDetailResponse, RecipeIngredientDetail, RecipeShort, RecipeUpdate
 from app.services.ingredient import serialize_ingredient_short
 from app.utils.translator import translate_measures_for_recipe, translate_unit_for_display
 
@@ -15,7 +15,6 @@ from app.utils.translator import translate_measures_for_recipe, translate_unit_f
 logger = logging.getLogger(__name__)
 
 def create_recipe_from_user_input(db: Session, recipe_data: RecipeCreate, user_id: int, lang: str) -> Recipe:
-
 
     analyzed_instructions_en = None
     analyzed_instructions_es = None
@@ -84,68 +83,74 @@ def create_recipe_from_user_input(db: Session, recipe_data: RecipeCreate, user_i
     return full_recipe
 
 
-def update_recipe_in_db(db: Session, db_recipe: Recipe, recipe_data: RecipeCreate, lang: str) -> Recipe:
+def update_recipe_in_db(db: Session, db_recipe: Recipe, recipe_data: RecipeUpdate, lang: str) -> Recipe:
     
-    title = recipe_data.title.strip()
-    db_recipe.title = title
-    db_recipe.title_es = title
+    update_data = recipe_data.model_dump(exclude_unset=True)
 
-    summary = recipe_data.summary.strip() if recipe_data.summary else None
-    db_recipe.summary = summary
-    db_recipe.summary_es = summary
+    if "title" in update_data:
+        title = update_data["title"].strip()
+        db_recipe.title = title
+        db_recipe.title_es = title
+    
+    if "summary" in update_data:
+        summary = update_data["summary"].strip() if update_data["summary"] else None
+        db_recipe.summary = summary
+        db_recipe.summary_es = summary
 
-    db_recipe.image_url = recipe_data.image_url.strip() if recipe_data.image_url else None
-    db_recipe.ready_min = recipe_data.ready_min
-    db_recipe.servings = recipe_data.servings
+    if "image_url" in update_data:
+        db_recipe.image_url = update_data["image_url"]
 
-    if recipe_data.analyzed_instructions:
-        analyzed_instructions = [step.model_dump() for step in recipe_data.analyzed_instructions]
-        db_recipe.analyzed_instructions = [{"steps": analyzed_instructions}]
-        db_recipe.analyzed_instructions_es = [{"steps": analyzed_instructions}]
-    else:
-        db_recipe.analyzed_instructions = None
-        db_recipe.analyzed_instructions_es = None
+    if "ready_min" in update_data:
+        db_recipe.ready_min = update_data["ready_min"]
 
+    if "servings" in update_data:
+        db_recipe.servings = update_data["servings"]
 
-    if recipe_data.dish_types is not None:
+    if "analyzed_instructions" in update_data:
+        if update_data["analyzed_instructions"]:
+            analyzed_instructions = [step for step in update_data["analyzed_instructions"]]
+            db_recipe.analyzed_instructions = [{"steps": analyzed_instructions}]
+            db_recipe.analyzed_instructions_es = [{"steps": analyzed_instructions}]
+        else:
+            db_recipe.analyzed_instructions = None
+            db_recipe.analyzed_instructions_es = None
+
+    if "dish_types" in update_data:
         dish_type_objects = []
-        if recipe_data.dish_types:
-            for name in set(recipe_data.dish_types):
+        if update_data["dish_types"]:
+            for name in set(update_data["dish_types"]):
                 db_dish_type = get_dish_type_by_name(db, name)
                 if not db_dish_type:
-                    logger.warning(f"Recipe update for recipe {db_recipe.id} failed: Dish type '{name}' not found.")
-                    raise HTTPException(
-                        status_code=404,
-                        detail={"code": ErrorCode.DISH_TYPE_NOT_FOUND, "message": f"Dish type '{name}' not found."}
-                    )
+                    raise HTTPException(...)
                 dish_type_objects.append(db_dish_type)
         db_recipe.dish_types = dish_type_objects
 
+    if "ingredients" in update_data:
 
-    db.query(RecipesIngredient).filter(RecipesIngredient.recipe_id == db_recipe.id).delete(synchronize_session=False)
+        db.query(RecipesIngredient).filter(RecipesIngredient.recipe_id == db_recipe.id).delete(synchronize_session=False)
 
-    if recipe_data.ingredients: 
-        new_recipes_ingredients = []
-        unique_ingredients = set()
-        for ing in recipe_data.ingredients:
-            normalized_ing = ing.name.strip().lower()
-            if normalized_ing in unique_ingredients:
-                logger.warning(f"Recipe update for recipe {db_recipe.id} failed: Duplicate ingredient '{normalized_ing}'.")
-                raise HTTPException(
-                    status_code=400,
-                    detail={"code": ErrorCode.DUPLICATED_INGREDIENT, "message": f"Duplicated ingredient in request: '{normalized_ing}'"}
-                )
-            unique_ingredients.add(normalized_ing)
+        if update_data["ingredients"]:
+            new_recipes_ingredients = []
+            unique_ingredients = set()
+            for ing in recipe_data.ingredients:
+                normalized_ing = ing.name.strip().lower()
+                if normalized_ing in unique_ingredients:
+                    logger.warning(f"Recipe update for recipe {db_recipe.id} failed: Duplicate ingredient '{normalized_ing}'.")
+                    raise HTTPException(
+                        status_code=400,
+                        detail={"code": ErrorCode.DUPLICATED_INGREDIENT, "message": f"Duplicated ingredient in request: '{normalized_ing}'"}
+                    )
+                unique_ingredients.add(normalized_ing)
+                
+                db_ingredient = get_or_create_ingredient_by_name(db, ing.name, lang)
+                new_recipes_ingredients.append(RecipesIngredient(
+                    recipe_id=db_recipe.id,
+                    ingredient_id=db_ingredient.id,
+                    amount=ing.amount,
+                    unit=ing.unit
+                ))
             
-            db_ingredient = get_or_create_ingredient_by_name(db, ing.name, lang)
-            new_recipes_ingredients.append(RecipesIngredient(
-                recipe_id=db_recipe.id,
-                ingredient_id=db_ingredient.id,
-                amount=ing.amount,
-                unit=ing.unit
-            ))
-        
-        db.add_all(new_recipes_ingredients)
+            db.add_all(new_recipes_ingredients)
 
     db.commit()
     full_recipe = get_recipe_details(db, db_recipe.id)

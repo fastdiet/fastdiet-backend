@@ -1,6 +1,5 @@
 from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
-from app.schemas.user_preferences import UserPreferencesResponse
 from app.utils.validators import validate_password_strength
 
 class UserRegister(BaseModel):
@@ -20,10 +19,10 @@ class UserResponse(BaseModel):
     username: str | None
     email: EmailStr
     name: str | None
-    age: int | None
-    gender: Literal['male', 'female'] | None
-    weight: float | None
-    height: float | None
+    age: int | None = None
+    gender: Literal['male', 'female'] | None = None
+    weight: float | None = None
+    height: float | None = None
     auth_method: str
     is_verified: bool
 

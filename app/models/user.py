@@ -29,4 +29,4 @@ class User(Base):
     email_verification_codes = relationship("EmailVerificationCode", back_populates="user", cascade="all, delete-orphan", passive_deletes=True)
     password_reset_codes = relationship("PasswordResetCode", back_populates="user", cascade="all, delete-orphan", passive_deletes=True)
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan", passive_deletes=True)
-    created_recipes = relationship("Recipe", back_populates="creator")
+    created_recipes = relationship("Recipe", back_populates="creator", cascade="all, delete-orphan", passive_deletes=True)

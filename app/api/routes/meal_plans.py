@@ -45,6 +45,7 @@ def get_my_meal_plan(
     lang: str = Depends(get_language)
 ):
     """Endpoint to get the current user's meal plan (if exists)"""
+  
     logger.info(f"Fetching meal plan for user ID: {current_user.id} ({current_user.username})")
     meal_plan = get_latest_meal_plan_for_user(db, current_user.id)
     if not meal_plan:
@@ -67,7 +68,6 @@ async def get_meal_suggestions(
     current_user: User = Depends(get_current_user),
     lang: str = Depends(get_language)
 ):
-    
     logger.info(f"User ID: {current_user.id} ({current_user.username}) is requesting meal suggestions.")
     preferences = get_user_preferences_by_user_id(db, current_user.id)
     if not preferences:

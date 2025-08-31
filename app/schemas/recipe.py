@@ -1,8 +1,5 @@
 from typing import Any
-from fastapi import Depends
 from pydantic import BaseModel, ConfigDict, Field, computed_field
-
-from app.core.auth import get_language
 from app.schemas.dish_type import DishTypeBase
 from app.schemas.ingredient import IngredientShort
 from app.schemas.nutrient import NutrientDetail
@@ -108,6 +105,16 @@ class RecipeCreate(BaseModel):
     servings: int = Field(..., ge=1)
     dish_types: list[str] | None = None
     ingredients: list[_RecipeIngredientCreate] = []
+    analyzed_instructions: list[_InstructionStep] | None = None
+
+class RecipeUpdate(BaseModel):
+    title: str | None = Field(None, min_length=3, max_length=100)
+    summary: str | None = None
+    ready_min: int | None = Field(None, ge=0)
+    servings: int | None = Field(None, ge=1)
+    image_url: str | None = None
+    dish_types: list[str] | None = None
+    ingredients: list[_RecipeIngredientCreate] | None = None
     analyzed_instructions: list[_InstructionStep] | None = None
 
 class RecipesListResponse(BaseModel):

@@ -65,6 +65,7 @@ UNIT_TRANSLATOR = {
     "pieces": "piezas",
     "slice": "rebanada",
     "slices": "rebanadas",
+    "large slices": "lonchas grandes",
     "handful": "puñado",
     "bunch": "manojo",
     "sprig": "ramita",
@@ -86,7 +87,15 @@ UNIT_TRANSLATOR = {
     "miniature": "miniatura",
     "taco": "taco",
     "roast": "asado",
-    "breast": "pechuga"
+    "breast": "pechuga",
+    "head": "cabeza",
+    "heads": "cabezas",
+    "halves": "mitades",
+    "stalk": "tallo",
+    "stalks": "tallos",
+    "strips": "tiras",
+    "strip": "tira",
+    "leaf": "hojas"
     
 }
 
@@ -94,7 +103,7 @@ REVERSED_UNIT_EXCEPTIONS = {v: k for k, v in UNIT_TRANSLATOR.items()}
 
 
 logger = logging.getLogger(__name__)
-credentials = get_settings().google_application_credentials
+credentials = get_settings().google_translation_credentials
 translate_client = translate.Client.from_service_account_json(json_credentials_path=credentials)
 
 def translate_text(text_or_list: str | list[str], target_language='es'):

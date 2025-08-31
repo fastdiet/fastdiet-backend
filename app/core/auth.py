@@ -18,7 +18,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_request
 
 
-ACCESS_TOKEN_EXPIRE_MINUTES = 2
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 logger = logging.getLogger(__name__)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/login-with-docs")

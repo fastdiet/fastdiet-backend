@@ -24,6 +24,7 @@ router = APIRouter(tags=["shopping_lists"], prefix="/shopping_lists")
 
 @router.get("/me", response_model=ShoppingListResponse)
 async def generate_shopping_list(
+    servings: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     language: str = Depends(get_language)
@@ -40,7 +41,7 @@ async def generate_shopping_list(
     
 
     logger.info(f"Generating shopping list from meal plan ID: {meal_plan.id} for user ID: {current_user.id} ({current_user.username}).")
-    aggregated_ingredients = aggregate_ingredients_from_meal_plan(meal_plan)
+    aggregated_ingredients = aggregate_ingredients_from_meal_plan(meal_plan, servings)
     if not aggregated_ingredients:
         logger.info(f"No ingredients found in meal plan ID: {meal_plan.id}. Returning empty shopping list.")
         return ShoppingListResponse(aisles=[], cost=0.0)

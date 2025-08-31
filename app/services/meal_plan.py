@@ -3,7 +3,7 @@ import logging
 from sqlalchemy.orm import Session
 from fastapi import HTTPException
 from app.core.errors import ErrorCode
-from app.core.meal_plan_config import MEAL_TYPE_SUGGESTION_CONFIG, MealPlanConfig, MealPlanGeneratorError, MealSlot
+from app.core.meal_plan_config import MEAL_TYPE_SUGGESTION_CONFIG, MealPlanGeneratorError
 from app.crud.diet_type import get_or_create_diet_type
 from app.crud.meal_plan import get_meal_plan_for_response, save_meal_plan_to_db
 from app.crud.recipe import get_or_create_spoonacular_recipe, get_recipe_suggestions_from_db
@@ -81,8 +81,6 @@ async def get_meal_replacement_suggestions(db: Session, preferences: UserPrefere
         generator = MealPlanGenerator(preferences, db, None)
         base_params = generator.base_search_params
 
-        if min_calories and max_calories:
-            min_calories, max_calories = max(0, min_calories - MealPlanConfig.CALORIE_SEARCH_RANGE), max_calories + MealPlanConfig.CALORIE_SEARCH_RANGE
 
         diet_used_in_query = base_params.get("diet")
         api_result = await spoon_service.search_recipes(
@@ -90,15 +88,15 @@ async def get_meal_replacement_suggestions(db: Session, preferences: UserPrefere
             intolerances=base_params.get("intolerances"),
             cuisine=base_params.get("cuisines"),
             type=spoonacular_type_to_search,
-            min_calories=min_calories,
-            max_calories=max_calories,
+            min_calories=None,
+            max_calories=None,
             number=spoon_recipes_needed * 3,
             sort="random"
         )
 
         if api_result.get("error"):
             logger.warning(f"Spoonacular API returned a body error for suggestions search: {api_result['error']}")
-            return list(recipe_suggestions.values())[:limit]
+            return list(recipe_suggestions.values())
         
         for recipe in api_result.get("results", []):
             db_recipe = get_or_create_spoonacular_recipe(db, recipe)
@@ -116,7 +114,7 @@ async def get_meal_replacement_suggestions(db: Session, preferences: UserPrefere
                 recipe_suggestions[db_recipe.id] = db_recipe
             db.commit()
 
-    return list(recipe_suggestions.values())[:limit]
+    return list(recipe_suggestions.values())[:limit*2]
 
 def meal_plan_to_response(meal_plan: MealPlan, lang: str) -> dict:
 

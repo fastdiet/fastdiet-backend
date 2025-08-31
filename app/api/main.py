@@ -1,5 +1,3 @@
-import asyncio
-from datetime import datetime
 import logging
 from fastapi import FastAPI
 from fastapi.requests import Request
@@ -51,11 +49,11 @@ app.add_middleware(SlowAPIMiddleware)
 
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
-@app.middleware("http")
-async def simulate_latency(request: Request, call_next):
-    await asyncio.sleep(1)
-    response = await call_next(request)
-    return response
+# @app.middleware("http")
+# async def simulate_latency(request: Request, call_next):
+#     await asyncio.sleep(1)
+#     response = await call_next(request)
+#     return response
 
 @app.middleware("http")
 async def log_requests_and_errors_middleware(request: Request, call_next) -> Response | JSONResponse:

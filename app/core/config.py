@@ -11,7 +11,9 @@ class Settings(BaseSettings):
     sender_password: str
     web_client_id: str
     spoonacular_api_key: str
-    google_application_credentials: str
+    google_translation_credentials: str
+    google_image_uploader_credentials: str
+    gcs_bucket_name: str
     model_config = SettingsConfigDict(env_file=".env")
 
 @lru_cache
