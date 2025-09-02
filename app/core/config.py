@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     google_translation_credentials: str
     google_image_uploader_credentials: str
     gcs_bucket_name: str
+    cors_origins: str
     model_config = SettingsConfigDict(env_file=".env")
 
 @lru_cache
