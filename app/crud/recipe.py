@@ -65,8 +65,7 @@ def get_recipe_suggestions_from_db(
 
     query = query.join(RecipesDishType).join(DishType).filter(DishType.name.in_(db_dish_types))
 
-    # Filter by diet
-    if preferences.diet_type_id != MealPlanConfig.BALANCE_DIET_ID:
+    if preferences.diet_type_id and preferences.diet_type_id != MealPlanConfig.BALANCE_DIET_ID:
         if preferences.diet_type_id == MealPlanConfig.VEGETARIAN_DIET_ID:
             query = query.join(RecipesDietType, isouter=True).filter(
                 or_(
