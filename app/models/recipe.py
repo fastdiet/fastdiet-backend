@@ -9,13 +9,15 @@ class Recipe(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     spoonacular_id = Column(Integer, nullable=True, unique=True)
     title = Column(String(255), nullable=False)
-    creator_id = Column(Integer, ForeignKey('users.id'), nullable=True)
+    title_es = Column(String(255), nullable=True)
+    creator_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"), nullable=True)
     image_url = Column(String(255), nullable=True)
     image_type = Column(String(50), nullable=True)
 
     ready_min = Column(Integer, nullable=True)
     servings = Column(Integer, nullable=True)
     summary = Column(Text, nullable=True)
+    summary_es = Column(Text, nullable=True)
 
 
     vegetarian = Column(Boolean, nullable=True)
@@ -33,12 +35,13 @@ class Recipe(Base):
     calories = Column(Float, nullable=True)
 
     analyzed_instructions = Column(JSON, nullable=True)
+    analyzed_instructions_es = Column(JSON, nullable=True)
     
     
-    cuisines = relationship("CuisineRegion", secondary="recipes_cuisines", back_populates="recipes")
-    dish_types = relationship("DishType", secondary="recipes_dish_types", back_populates="recipes")
-    diet_types = relationship("DietType", secondary="recipes_diet_types", back_populates="recipes")
-    recipes_nutrients = relationship("RecipesNutrient", back_populates="recipe", cascade="all, delete-orphan")
-    recipes_ingredients = relationship("RecipesIngredient", back_populates="recipe", cascade="all, delete-orphan")
+    cuisines = relationship("CuisineRegion", secondary="recipes_cuisines", back_populates="recipes", passive_deletes=True)
+    dish_types = relationship("DishType", secondary="recipes_dish_types", back_populates="recipes", passive_deletes=True)
+    diet_types = relationship("DietType", secondary="recipes_diet_types", back_populates="recipes", passive_deletes=True)
+    recipes_nutrients = relationship("RecipesNutrient", back_populates="recipe", cascade="all, delete-orphan", passive_deletes=True)
+    recipes_ingredients = relationship("RecipesIngredient", back_populates="recipe", cascade="all, delete-orphan",passive_deletes=True)
     meal_items = relationship("MealItem", back_populates="recipe", cascade="all, delete-orphan", passive_deletes=True)
     creator = relationship("User", back_populates="created_recipes")

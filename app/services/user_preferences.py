@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy.orm import Session
 from app.core.errors import ErrorCode
 from app.models import User, UserPreferences
@@ -7,11 +8,13 @@ from app.crud.user_preferences import create_user_preferences, get_user_preferen
 from app.crud.cuisine_region import get_cuisine_regions_by_ids
 from app.crud.intolerance import get_intolerances_by_ids
 
+logger = logging.getLogger(__name__)
 
 # Function to get or create user preferences
 def get_or_create_user_preferences(db: Session, user_id: int) -> UserPreferences:
     preferences = get_user_preferences_by_user_id(db, user_id)
     if not preferences:
+        logger.info(f"No preferences found for user ID: {user_id}. Creating new default preferences entry.")
         preferences = create_user_preferences(db, user_id)
     return preferences
 
@@ -48,7 +51,12 @@ def recalculate_calories_if_possible(db: Session, user: User, preferences: UserP
     ]
 
     if all(required_fields):
-        preferences.calories_goal = calculate_calories_goal(user, preferences)
+        logger.info(f"All required fields present for user ID {user.id} ({user.username}). Recalculating calories goal.")
+        new_calories = calculate_calories_goal(user, preferences)
+        logger.info(f"Calories goal for user ID {user.id} ({user.username}) calculated as: {new_calories}.")
+        preferences.calories_goal = new_calories
+    else:
+        logger.warning(f"Cannot recalculate calories for user ID {user.id} ({user.username}) because some required profile fields are missing.")
 
 
 # Function to update the diet type of the user preferences
@@ -56,6 +64,7 @@ def update_diet(db: Session, user: User, diet_id: int):
     if diet_id is not None:
         diet_type = get_diet_type_by_id(db, diet_id)
         if not diet_type:
+            logger.warning(f"User ID {user.id} ({user.username}) failed to update diet type: Diet ID {diet_id} not found.")
             raise HTTPException(
                 status_code=404,
                 detail={"code": ErrorCode.DIET_TYPE_NOT_FOUND, "message": "Diet type not found"}
@@ -77,6 +86,7 @@ def update_cuisine_preferences(db: Session, user: User, cuisine_ids: list[int]):
     # Verify all cuisine IDs exist
     existing_cuisines = get_cuisine_regions_by_ids(db, list(set(cuisine_ids)))
     if len(existing_cuisines) != len(set(cuisine_ids)):
+        logger.warning(f"User ID {user.id} ({user.username}) failed to update cuisines: One or more provided cuisine IDs are not found.")
         raise HTTPException(
             status_code=404,
             detail={"code": ErrorCode.CUISINE_REGIONS_NOT_FOUND, "message": "Cuisine regions not found"}
@@ -96,6 +106,7 @@ def update_intolerance_preferences(db: Session, user: User, intolerance_ids: lis
     
     existing_intolerances = get_intolerances_by_ids(db, list(set(intolerance_ids)))
     if len(existing_intolerances) != len(set(intolerance_ids)):
+        logger.warning(f"User ID {user.id} ({user.username}) failed to update intolerances: One or more provided intolerance IDs are not found.")
         raise HTTPException(
             status_code=404,
             detail={"code": ErrorCode.INTOLERANCES_NOT_FOUND, "message": "Intolerances not found"}

@@ -3,6 +3,7 @@ import random
 import string
 from pydantic import EmailStr
 from sqlalchemy.orm import Session
+from app.core.email_templates import EMAIL_TEXTS
 from app.core.errors import ErrorCode
 from app.models.user import User
 from app.services.email import send_email
@@ -15,7 +16,7 @@ def generate_confirmation_code(length: int = 6) -> str:
     return ''.join(random.choices(string.digits, k=length))
 
 # Function to create a new confirmation code and send it to the user's email
-def create_and_send_verification_code(user: User, db: Session):
+def create_and_send_verification_code(user: User, db: Session, lang: str):
     
     code = generate_confirmation_code()
     expires_at = datetime.utcnow() + timedelta(minutes=15)
@@ -30,10 +31,24 @@ def create_and_send_verification_code(user: User, db: Session):
 
     user_display = user.name or user.username or "user"
 
+    lang_texts = EMAIL_TEXTS.get(lang, EMAIL_TEXTS["en"])
+    action_texts = lang_texts["verification"]
+
+    email_context = {
+        "title": action_texts["title"],
+        "greeting": action_texts["greeting"],
+        "user_display": user_display,
+        "line1": action_texts["line1"],
+        "code": email_verification_code.code,
+        "line2": action_texts["line2"],
+        "farewell": action_texts["farewell"],
+        "footer_text": lang_texts["footer_text"]
+    }
+
     send_email(
         to_email=user.email,
-        subject="Your confirmation code",
-        body=f"Hi {user_display},\n\nYour confirmation code is: {email_verification_code.code}\nIt will expire in 15 minutes."
+        subject=action_texts["subject"],
+        template_context=email_context
     )
 
 # Function to verify the user's email using the confirmation code

@@ -1,32 +1,36 @@
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 from app.models.ingredient import Ingredient
+from app.utils.translator import translate_text
 
 
 def get_or_create_spoonacular_ingredient(db: Session, ingredient_data: dict) -> Ingredient | None:
 
-    ingredient_name = ingredient_data.get("nameClean") or ingredient_data.get("name")
-    
-    if not ingredient_name:
+    name_en = ingredient_data.get("nameClean") or ingredient_data.get("name")
+    if not name_en:
         return None
-    normalized_name = ingredient_name.strip().lower()
+    
+    normalized_name_en = name_en.strip().lower()
     spoon_id = ingredient_data.get("id")
     ingredient = None
     if spoon_id:
         ingredient = db.query(Ingredient).filter(Ingredient.spoonacular_id == spoon_id).first()
 
     if not ingredient:
-        ingredient = db.query(Ingredient).filter(Ingredient.name == normalized_name).first()
+        ingredient = db.query(Ingredient).filter(Ingredient.name_en == normalized_name_en).first()
         
     if not ingredient:
+        name_es = translate_text(normalized_name_en, target_language='es')
         ingredient = Ingredient(
-                spoonacular_id=spoon_id,
-                name=normalized_name,
-                image_filename=ingredient_data.get("image"),
-                aisle=ingredient_data.get("aisle")
-            )
+            spoonacular_id=spoon_id,
+            name_en=normalized_name_en,
+            name_es=name_es.strip().lower() if name_es else None,
+            image_filename=ingredient_data.get("image"),
+            aisle=ingredient_data.get("aisle")
+        )
         db.add(ingredient)
         db.flush()
-        print(f"CREATED INGREDIENT: {ingredient.id=} {ingredient.name=}")
+        print(f"\n🍕CREATED INGREDIENT: {ingredient.id} {ingredient.name_en} ||||||  {ingredient.name_en}\n")
         return ingredient
     
     updated = False
@@ -44,12 +48,26 @@ def get_or_create_spoonacular_ingredient(db: Session, ingredient_data: dict) -> 
 
     return ingredient
 
-def get_or_create_ingredient_by_name(db: Session, name: str) -> Ingredient:
+def get_or_create_ingredient_by_name(db: Session, name: str, lang: str) -> Ingredient:
     normalized_name = name.strip().lower()
-    ingredient = db.query(Ingredient).filter(Ingredient.name == normalized_name).first()
+
+    if lang == "es":
+        query_column = Ingredient.name_es
+    else:
+        query_column = Ingredient.name_en
+
+    ingredient = db.query(Ingredient).filter(func.lower(query_column) == normalized_name).first()
 
     if not ingredient:
-        ingredient = Ingredient(name=normalized_name)
+        create_payload = {
+            "name_es": normalized_name,
+            "name_en": normalized_name 
+        }
+        ingredient = Ingredient(**create_payload)
         db.add(ingredient)
         db.flush()
+    return ingredient
+
+def get_ingredient_by_spoonacular_id(db: Session, spoon_id: int) -> Ingredient | None:
+    ingredient = db.query(Ingredient).filter(Ingredient.spoonacular_id == spoon_id).first()
     return ingredient

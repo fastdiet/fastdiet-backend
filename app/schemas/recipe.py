@@ -1,6 +1,5 @@
 from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, computed_field
-
 from app.schemas.dish_type import DishTypeBase
 from app.schemas.ingredient import IngredientShort
 from app.schemas.nutrient import NutrientDetail
@@ -16,21 +15,19 @@ class RecipeShort(BaseModel):
     ready_min: int | None = None
     calories: float | None = None
     servings: int | None = None
-    dish_types_objects: list[DishTypeBase] = Field(default=[], alias="dish_types", exclude=True)
+    dish_types: list[str] | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
-    @computed_field(return_type=list[str])
-    def dish_types(self) -> list[str]:
-        return [dt.name.lower() for dt in self.dish_types_objects]
     
-class _RecipeIngredientDetail(BaseModel):
+class RecipeIngredientDetail(BaseModel):
     original_ingredient_name: str | None = None
     amount: float
     unit: str | None = None
     measures_json: dict | None = None 
     ingredient: IngredientShort
     model_config = ConfigDict(from_attributes=True)
+    
 
 class _RecipeIngredientCreate(BaseModel):
     name: str = Field(..., min_length=1)
@@ -60,10 +57,10 @@ class RecipeDetailResponse(BaseModel):
     cooking_min: int | None = None
     calories: float | None = None
     analyzed_instructions: list[dict] | None = None
+    ingredients: list[RecipeIngredientDetail] = []
     cuisines_objects: list[CuisineResponse] = Field(default=[], alias="cuisines", exclude=True)
     dish_types_objects: list[DishTypeBase] = Field(default=[], alias="dish_types", exclude=True)
     diet_types_objects: list[DietResponse] = Field(default=[], alias="diet_types", exclude=True)
-    recipes_ingredients: list[_RecipeIngredientDetail] = Field(default=[], exclude=True)
     recipes_nutrients: list[Any] = Field(default=[], exclude=True)
     model_config = ConfigDict(from_attributes=True)
 
@@ -78,10 +75,6 @@ class RecipeDetailResponse(BaseModel):
     @computed_field(return_type=list[str])
     def cuisines(self) -> list[str]:
         return [c.name for c in self.cuisines_objects]
-    
-    @computed_field(return_type=list[_RecipeIngredientDetail])
-    def ingredients(self) -> list[_RecipeIngredientDetail]:
-        return self.recipes_ingredients
     
     @computed_field(return_type=list[NutrientDetail])
     def nutrients(self) -> list[NutrientDetail]:
@@ -112,6 +105,16 @@ class RecipeCreate(BaseModel):
     servings: int = Field(..., ge=1)
     dish_types: list[str] | None = None
     ingredients: list[_RecipeIngredientCreate] = []
+    analyzed_instructions: list[_InstructionStep] | None = None
+
+class RecipeUpdate(BaseModel):
+    title: str | None = Field(None, min_length=3, max_length=100)
+    summary: str | None = None
+    ready_min: int | None = Field(None, ge=0)
+    servings: int | None = Field(None, ge=1)
+    image_url: str | None = None
+    dish_types: list[str] | None = None
+    ingredients: list[_RecipeIngredientCreate] | None = None
     analyzed_instructions: list[_InstructionStep] | None = None
 
 class RecipesListResponse(BaseModel):

@@ -1,8 +1,7 @@
 import pytest
 from unittest.mock import MagicMock, patch
 from fastapi import HTTPException
-
-from app.schemas.user import UserCreate
+from app.schemas.user import UserRegister
 from app.services.user import register_user
 
 class TestCaseUserRegister:
@@ -13,23 +12,21 @@ class TestCaseUserRegister:
     
     @pytest.fixture
     def user_input(self):
-        return UserCreate(
+        return UserRegister(
             email="test@example.com",
-            username="testuser",
             password="Password123!",
-            name="Test User"
         )
 
-    def test_register_user_success(self, mock_db, user_input):
-        """Registers a new user successfully when email and username are unique"""
+    def test_register_user_success_when_user_does_not_exist(self, mock_db, user_input):
+        """Registers a new user successfully when email is unique"""
 
-        mock_user = MagicMock(email=user_input.email, username=user_input.username)
+        mock_user = MagicMock(email=user_input.email)
         original_password = user_input.password
         user_input_copy = user_input.model_copy(deep=True)
 
-        with patch("app.services.user.get_user_by_username_or_email") as mock_get_user, \
-             patch("app.services.user.hash_password") as mock_hash_password, \
-             patch("app.services.user.create_user") as mock_create_user:
+        with patch("app.services.user.get_user_by_email") as mock_get_user, \
+            patch("app.services.user.hash_password") as mock_hash_password, \
+            patch("app.services.user.create_user") as mock_create_user:
             
             mock_get_user.return_value = None
             mock_hash_password.return_value = "hashed_password"
@@ -39,41 +36,49 @@ class TestCaseUserRegister:
 
             assert result == mock_user
             assert user_input_copy.password == "hashed_password"
-            assert user_input_copy.password != original_password
-            mock_get_user.assert_called_once_with(mock_db, user_input.email, user_input.username)
+            mock_get_user.assert_called_once_with(mock_db, user_input.email)
             mock_hash_password.assert_called_once_with(original_password)
             mock_create_user.assert_called_once_with(mock_db, user_input_copy)
 
-    def test_email_exists(self, mock_db, user_input):
-        """Raises HTTPException when the email is already registered"""
+    def test_register_fails_if_verified_email_exists(self, mock_db, user_input):
+        """Raises HTTPException when a VERIFIED user with that email already exists."""
 
-        existing_user = MagicMock(email=user_input.email, username="differentusername")
+        existing_user = MagicMock(email=user_input.email, is_verified= True)
 
-        with patch("app.services.user.get_user_by_username_or_email") as mock_get_user:
+        with patch("app.services.user.get_user_by_email") as mock_get_user:
             mock_get_user.return_value = existing_user
 
-            with pytest.raises(HTTPException) as excinfo:
+            with pytest.raises(HTTPException) as exc_info:
                 register_user(mock_db, user_input)
 
-            assert excinfo.value.status_code == 400
-            assert excinfo.value.detail == "Email already registered"
-            mock_get_user.assert_called_once_with(mock_db, user_input.email, user_input.username)
-
-
-    def test_username_exists(self, mock_db, user_input):
-        """Raises HTTPException when the username is already taken"""
+            assert exc_info.value.status_code == 400
+            assert exc_info.value.detail['code'] == 'EMAIL_ALREADY_REGISTERED'
+            assert exc_info.value.detail['message'] == "Email already registered"
+            mock_get_user.assert_called_once_with(mock_db, user_input.email)
     
-        existing_user = MagicMock(email="different@example.com", username=user_input.username)
+    def test_register_updates_user_if_unverified_email_exists(self, mock_db, user_input):
+        """Updates password and returns existing user if an UNVERIFIED user with that email exists."""
 
-        with patch("app.services.user.get_user_by_username_or_email") as mock_get_user:
+        existing_user = MagicMock(email=user_input.email, is_verified=False)
+        original_password = user_input.password
+
+        with patch("app.services.user.get_user_by_email") as mock_get_user, \
+            patch("app.services.user.hash_password") as mock_hash_password, \
+            patch("app.services.user.create_user") as mock_create_user:
+            
             mock_get_user.return_value = existing_user
+            mock_hash_password.return_value = "new_hashed_password"
 
-            with pytest.raises(HTTPException) as excinfo:
-                register_user(mock_db, user_input)
+            result = register_user(mock_db, user_input)
 
-            assert excinfo.value.status_code == 400
-            assert excinfo.value.detail == "Username already taken"
-            mock_get_user.assert_called_once_with(mock_db, user_input.email, user_input.username)
+            assert result == existing_user
+            assert existing_user.hashed_password == "new_hashed_password"
+            mock_get_user.assert_called_once_with(mock_db, user_input.email)
+            mock_hash_password.assert_called_once_with(original_password)
+            mock_create_user.assert_not_called()
+            mock_db.commit.assert_called_once()
+            mock_db.refresh.assert_called_once_with(existing_user)
+
 
     @pytest.mark.parametrize("password, expected_error", [
         ("password", "uppercase letter"),  
@@ -86,10 +91,8 @@ class TestCaseUserRegister:
         """Raises ValueError when the password does not meet security requirements"""
 
         with pytest.raises(ValueError) as exc_info:
-            UserCreate(
-                username="testuser",
+            UserRegister(
                 email="test@example.com",
                 password=password,
-                name="Test User"
             )
         assert expected_error in str(exc_info.value)
