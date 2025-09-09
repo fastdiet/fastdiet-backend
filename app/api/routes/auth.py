@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["auth"])
 
 @router.post("/login", response_model=AuthResponse)
-@limiter.limit("5/minute")
+@limiter.limit("10/minute")
 def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     """Endpoint to login a user and return access and refresh tokens"""
     logger.info(f"Login attempt for user: {form_data.username}")
@@ -51,7 +51,7 @@ def logout(current_user: User = Depends(get_current_user), db: Session = Depends
     return SuccessResponse(success=True, message="Logged out successfully")
 
 @router.post("/register", response_model=UserResponse, status_code=201)
-@limiter.limit("3/minute")
+@limiter.limit("5/minute")
 def register(request: Request, user_data: UserRegister, db: Session = Depends(get_db)):
     """Endpoint to register a new user"""
     email = user_data.email.strip().lower()
@@ -62,7 +62,7 @@ def register(request: Request, user_data: UserRegister, db: Session = Depends(ge
 
 @router.post("/send-verification-code", response_model=SuccessResponse)
 @limiter.limit("2/minute")
-def send_verification_code(request: Request, email_request: EmailRequest, db: Session = Depends(get_db), lang: str = Depends(get_language)):
+async def send_verification_code(request: Request, email_request: EmailRequest, db: Session = Depends(get_db), lang: str = Depends(get_language)):
     """Endpoint to send a verification code to the user's email"""
     email = email_request.email.strip().lower()
     logger.info(f"Request to send verification code to email: {email}")
@@ -82,7 +82,7 @@ def send_verification_code(request: Request, email_request: EmailRequest, db: Se
             detail={"code": ErrorCode.USER_ALREADY_VERIFIED, "message": "User already verified"}
         )
 
-    create_and_send_verification_code(user, db, lang)
+    await create_and_send_verification_code(user, db, lang)
     return SuccessResponse(success=True, message="Verification code sent")
 
 @router.post("/verify-email", response_model=AuthResponse)
@@ -103,7 +103,7 @@ def verify_email(data: EmailCode, db: Session = Depends(get_db)):
 
 
 @router.post("/refresh-token", response_model=TokenResponse)
-@limiter.limit("1/minute")
+@limiter.limit("20/hour")
 def refresh_access_token(request: Request, refresh_request: RefreshRequest, db: Session = Depends(get_db)):
     """Endpoint to refresh the access token using a refresh token"""
     logger.info("Access token refresh requested.")
@@ -112,7 +112,7 @@ def refresh_access_token(request: Request, refresh_request: RefreshRequest, db: 
 
 @router.post("/send-reset-code", response_model=SuccessResponse)
 @limiter.limit("2/minute")
-def send_reset_code(request: Request, email_request: EmailRequest, db: Session = Depends(get_db), lang: str = Depends(get_language)):
+async def send_reset_code(request: Request, email_request: EmailRequest, db: Session = Depends(get_db), lang: str = Depends(get_language)):
     """Endpoint to send a password reset code to the user's email"""
     email = email_request.email.strip().lower()
     logger.info(f"Password reset code requested for email: {email}")
@@ -130,7 +130,7 @@ def send_reset_code(request: Request, email_request: EmailRequest, db: Session =
             detail={"code": ErrorCode.USER_NOT_VERIFIED_FOR_RESET, "message": "You need to verify your email before resetting the password"}
         )
     
-    create_and_send_reset_code(user, db, lang)
+    await create_and_send_reset_code(user, db, lang)
     logger.info(f"Password reset code sent successfully to user ID: {user.id} ({user.username}).")
 
     return SuccessResponse(success=True, message="Reset code sent successfully")
@@ -145,7 +145,7 @@ def verify_reset_code(request: Request, data: EmailCode, db: Session = Depends(g
     return SuccessResponse(success=True, message="Reset code is valid")
 
 @router.post("/reset-password", response_model=SuccessResponse)
-@limiter.limit("3/minute")
+@limiter.limit("5/minute")
 def reset_password(request: Request, data: ResetPasswordRequest, db: Session = Depends(get_db)):
     """Endpoint to reset the password using a valid reset code"""
     email = data.email.strip().lower()

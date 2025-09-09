@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     google_image_uploader_credentials: str
     gcs_bucket_name: str
     cors_origins: str
+    task_secret_key: str
+    brevo_api_key: str
     model_config = SettingsConfigDict(env_file=".env")
 
 @lru_cache

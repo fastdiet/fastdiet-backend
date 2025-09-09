@@ -1,6 +1,6 @@
 
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from app.core.auth import get_current_user, get_language
 from app.core.config import Settings, get_settings
@@ -14,6 +14,7 @@ from app.schemas.image_uploader import UploadURLRequest, UploadURLResponse
 from app.schemas.recipe import RecipeCreate, RecipeDetailResponse, RecipeUpdate, RecipesListResponse
 from app.services.image_uploader import ImageUploaderService
 from app.services.recipe import create_recipe_from_user_input, serialize_recipe_detail, serialize_recipe_short_list, update_recipe_in_db
+from app.core.rate_limiter import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +25,9 @@ router = APIRouter(tags=["recipes"], prefix="/recipes")
     response_model=UploadURLResponse,
     summary="Generate a Signed URL for direct image upload to GCS"
 )
+@limiter.limit("10/minute")
 def generate_upload_url(
+    request: Request,
     request_data: UploadURLRequest,
     current_user: User = Depends(get_current_user),
     settings: Settings = Depends(get_settings)
@@ -80,7 +83,9 @@ def get_recipe(
 
 
 @router.post("/me", response_model=RecipeDetailResponse, status_code=201)
+@limiter.limit("30/minute")
 def create_user_recipe(
+    request: Request,
     recipe_data: RecipeCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -95,7 +100,9 @@ def create_user_recipe(
 
 
 @router.patch("/me/{recipe_id}", response_model=RecipeDetailResponse)
+@limiter.limit("30/minute")
 def update_user_recipe(
+    request: Request,
     recipe_id: int,
     recipe_data: RecipeUpdate,
     db: Session = Depends(get_db),

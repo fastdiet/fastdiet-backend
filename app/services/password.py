@@ -4,7 +4,7 @@ from app.core.email_templates import EMAIL_TEXTS
 from app.core.errors import ErrorCode
 from app.models.user import User
 from app.models.password_reset_code import PasswordResetCode
-from app.services.email import send_email
+from app.services.email import send_transactional_email_with_brevo
 from app.services.email_verification_code import generate_confirmation_code
 from app.crud.password_reset_code import create_password_reset_code, get_valid_password_reset_code, mark_old_reset_codes_as_used
 from app.crud.user import get_user_by_email
@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 
 
-def create_and_send_reset_code(user: User, db: Session, lang: str):
+async def create_and_send_reset_code(user: User, db: Session, lang: str):
     code = generate_confirmation_code()
     expires_at = datetime.utcnow() + timedelta(minutes=15)
 
@@ -40,10 +40,11 @@ def create_and_send_reset_code(user: User, db: Session, lang: str):
         "footer_text": lang_texts["footer_text"]
     }
 
-    send_email(
+    await send_transactional_email_with_brevo(
         to_email=user.email,
         subject=action_texts["subject"],
-        template_context=email_context
+        template_context=email_context,
+        template_id=1
     )
 
 def verify_valid_reset_code(db: Session, email: str, code: str) -> tuple[User, PasswordResetCode]:

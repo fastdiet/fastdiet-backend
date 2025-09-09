@@ -3,7 +3,7 @@
 
 from collections import defaultdict
 import logging
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 from app.core.auth import get_current_user, get_language
 from app.core.errors import ErrorCode
@@ -15,7 +15,7 @@ from app.schemas.shopping_list import Aisle, ShoppingListItem, ShoppingListRespo
 from app.services.shopping_list import aggregate_ingredients_from_meal_plan, partition_shopping_list_items
 from app.services.spoonacular import SpoonacularService
 from app.utils.translator import translate_measures_for_shopping_list
-
+from app.core.rate_limiter import limiter
 
 
 logger = logging.getLogger(__name__)
@@ -23,7 +23,9 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["shopping_lists"], prefix="/shopping_lists")
 
 @router.get("/me", response_model=ShoppingListResponse)
+@limiter.limit("30/minute")
 async def generate_shopping_list(
+    request: Request,
     servings: int | None = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),

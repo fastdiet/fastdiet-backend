@@ -1,5 +1,5 @@
 import logging
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 from app.core.errors import ErrorCode
 from app.crud.meal_item import create_db_meal_item, get_complete_meal_item_by_id, get_meal_item_by_id
@@ -15,14 +15,16 @@ from app.schemas.recipe import RecipeId, RecipeShort
 from app.services.meal_plan import generate_meal_plan_for_user, get_meal_replacement_suggestions, meal_plan_to_response
 from app.services.recipe import serialize_recipe_short, serialize_recipe_short_list
 from app.services.spoonacular import SpoonacularService
-
+from app.core.rate_limiter import limiter
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["meal_plans"], prefix="/meal_plans")
 
 @router.post("/generate", response_model=GeneratedMealResponse)
+@limiter.limit("10/minute")
 async def generate_meal_plan(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     lang: str = Depends(get_language)
@@ -56,9 +58,33 @@ def get_my_meal_plan(
         )
     return meal_plan_to_response(meal_plan, lang)
 
+@router.delete("/me", response_model=SuccessResponse)
+def delete_my_meal_plan(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Endpoint to delete the current user's meal plan (if exists)"""
+  
+    logger.info(f"User ID: {current_user.id} ({current_user.username}) requested to delete their meal plan")
+    meal_plan = get_latest_meal_plan_for_user(db, current_user.id)
+    print(meal_plan)
+    if not meal_plan:
+        logger.warning(f"No meal plan found for user ID: {current_user.id} ({current_user.username})")
+        raise HTTPException(
+            status_code=404,
+            detail={"code": ErrorCode.MEAL_PLAN_NOT_FOUND, "message": "No meal plan found for this user"}
+        )
+    db.delete(meal_plan)
+    db.commit()
+    logger.info(f"Meal plan for user ID: {current_user.id} ({current_user.username}) deleted successfully")
+
+    return SuccessResponse(success=True, message="Meal plan deleted successfully")
+
 
 @router.get("/suggestions", response_model=list[RecipeShort])
+@limiter.limit("60/minute")
 async def get_meal_suggestions(
+    request: Request,
     meal_item_id: int | None = Query(None),
     day_index: int | None = Query(None, ge=0, le=6),
     slot: int | None = Query(None, ge=0),
@@ -203,7 +229,9 @@ def delete_recipe_from_meal_plan(
     return SuccessResponse(success=True, message="Recipe removed successfully from the meal plan")
 
 @router.get("/recipe", response_model=dict)
+@limiter.limit("10/minute")
 async def get_random_recipe(
+    request: Request,
     db: Session = Depends(get_db),
 ):
     spoonacular = SpoonacularService()
