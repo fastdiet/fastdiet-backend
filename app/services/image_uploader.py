@@ -1,11 +1,13 @@
 import mimetypes
 from uuid import uuid4
-from google.cloud import storage
 from urllib.parse import urlparse
 from datetime import timedelta
 import logging
-from google.api_core import exceptions as gcs_exceptions
 
+import google.auth
+from google.auth.transport.requests import Request
+from google.api_core import exceptions as gcs_exceptions
+from google.cloud import storage
 from app.core.config import Settings
 
 logger = logging.getLogger(__name__)
@@ -14,11 +16,17 @@ logger = logging.getLogger(__name__)
 class ImageUploaderService:
     def __init__(self, settings: Settings):
         try:
-            self.storage_client = storage.Client.from_service_account_json(
-                settings.google_image_uploader_credentials
-            )
+            if getattr(settings, "google_image_uploader_credentials", None):
+                self.storage_client = storage.Client.from_service_account_json(
+                    settings.google_image_uploader_credentials
+                )
+            else:
+                self.storage_client = storage.Client()
+                
+            self.service_account_email = f"image-uploader@{settings.gcp_project_id}.iam.gserviceaccount.com"
             self.bucket_name = settings.gcs_bucket_name
             self.bucket = self.storage_client.bucket(self.bucket_name)
+            
         except Exception as e:
             logger.critical(f"Failed to initialize Google Cloud Storage client: {e}")
             raise RuntimeError("Could not connect to GCS. Please check credentials.")
@@ -39,12 +47,28 @@ class ImageUploaderService:
             unique_object_name = f"user_{user_id}/recipes/{uuid4()}.{file_extension}"
             blob = self.bucket.blob(unique_object_name)
 
+            credentials, project = google.auth.default()
+            request = Request()
+            try:
+                credentials.refresh(request)
+            except Exception:
+                logger.exception("Failed to refresh ADC credentials (cannot obtain access token).")
+                return None
+
+            access_token = getattr(credentials, "token", None)
+            if not access_token:
+                logger.error("No access token obtained after credentials.refresh(); cannot sign URL.")
+                return None
+
             signed_url = blob.generate_signed_url(
                 version="v4",
                 expiration=timedelta(minutes=15),
                 method="PUT",
                 content_type=content_type,
+                service_account_email=self.service_account_email,
+                access_token=access_token,
             )
+            
 
             return {
                 "signed_url": signed_url,
@@ -53,6 +77,9 @@ class ImageUploaderService:
             }
         except gcs_exceptions.GoogleAPICallError as e:
             logger.error(f"GCS API Error during upload URL generation for user {user_id}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Unexpected error generating upload URL for user {user_id}: {e}", exc_info=True)
             return None
         
     def delete_image(self, public_url: str) -> bool:

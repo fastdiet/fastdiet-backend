@@ -32,9 +32,7 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('token')
     )
-    op.drop_index('ix_confirmation_codes_code', table_name='confirmation_codes')
-    op.drop_index('ix_confirmation_codes_id', table_name='confirmation_codes')
-    op.drop_table('confirmation_codes')
+    
     op.alter_column('email_verification_codes', 'expires_at',
                existing_type=mysql.DATETIME(),
                type_=sa.TIMESTAMP(),
@@ -59,18 +57,6 @@ def downgrade() -> None:
                existing_type=sa.TIMESTAMP(),
                type_=mysql.DATETIME(),
                existing_nullable=False)
-    op.create_table('confirmation_codes',
-    sa.Column('id', mysql.INTEGER(display_width=11), autoincrement=True, nullable=False),
-    sa.Column('user_id', mysql.INTEGER(display_width=11), autoincrement=False, nullable=False),
-    sa.Column('code', mysql.VARCHAR(length=255), nullable=False),
-    sa.Column('expires_at', mysql.DATETIME(), nullable=False),
-    sa.Column('used', mysql.TINYINT(display_width=1), autoincrement=False, nullable=True),
-    sa.ForeignKeyConstraint(['user_id'], ['users.id'], name='confirmation_codes_ibfk_1', ondelete='CASCADE'),
-    sa.PrimaryKeyConstraint('id'),
-    mysql_default_charset='latin1',
-    mysql_engine='InnoDB'
-    )
-    op.create_index('ix_confirmation_codes_id', 'confirmation_codes', ['id'], unique=False)
-    op.create_index('ix_confirmation_codes_code', 'confirmation_codes', ['code'], unique=False)
+    
     op.drop_table('refresh_tokens')
     # ### end Alembic commands ###

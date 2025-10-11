@@ -1,10 +1,8 @@
 import logging
 from fastapi import APIRouter, Depends, Header, HTTPException, status
-from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from app.db.db_connection import get_sync_session
-from app.models.user import User  # Asegúrate de que la ruta de importación sea correcta
 from app.core.config import get_settings
 from app.services.user import delete_unverified_users
 
@@ -23,4 +21,5 @@ async def trigger_delete_unverified_users(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
     
     result = delete_unverified_users(db)
+    logger.info(f"Task delete_unverified_users executed: {result}")
     return result

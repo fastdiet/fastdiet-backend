@@ -2,6 +2,7 @@ import copy
 import logging
 from google.cloud import translate_v2 as translate
 from app.core.config import get_settings
+import google.auth
 
 UNIT_TRANSLATOR = {
     "g": "g",
@@ -95,16 +96,17 @@ UNIT_TRANSLATOR = {
     "stalks": "tallos",
     "strips": "tiras",
     "strip": "tira",
-    "leaf": "hojas"
-    
+    "leaf": "hojas",
+    "large knob": "trozo grande",
 }
 
 REVERSED_UNIT_EXCEPTIONS = {v: k for k, v in UNIT_TRANSLATOR.items()}
 
 
 logger = logging.getLogger(__name__)
-credentials = get_settings().google_translation_credentials
-translate_client = translate.Client.from_service_account_json(json_credentials_path=credentials)
+#credentials = get_settings().google_translation_credentials
+credentials, project = google.auth.default()
+translate_client = translate.Client(credentials=credentials)
 
 def translate_text(text_or_list: str | list[str], target_language='es'):
     

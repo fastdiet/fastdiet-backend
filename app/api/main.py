@@ -3,14 +3,14 @@ from fastapi import FastAPI
 from fastapi.requests import Request
 from fastapi.responses import JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
-from app.api.routes import recipes, shopping_lists, tasks, users, auth, users_preferences, meal_plans
+from app.api.routes import recipes, shopping_lists, tasks, users, auth, users_preferences, meal_plans, waitlist
 from app.core.config import get_settings
 from app.core.logging_config import setup_logging
 from app.core.rate_limiter import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
-from app.db.db_connection import init_db
+from app.db.db_connection import Base, init_db
 
 
 
@@ -71,6 +71,7 @@ app.include_router(meal_plans.router)
 app.include_router(recipes.router)
 app.include_router(shopping_lists.router)
 app.include_router(tasks.router)
+app.include_router(waitlist.router)
 
 @app.get("/", summary="Endpoint to check API status")
 def read_root():
