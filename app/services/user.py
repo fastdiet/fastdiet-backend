@@ -63,22 +63,23 @@ def update_user(db: Session, current_user: User, user_update: UserUpdate):
 
     return current_user, updated_preferences
 
-def delete_unverified_users():
-    with next(get_sync_session()) as db:
-        try:
-            time_threshold = datetime.utcnow() - timedelta(minutes=5)
-            deleted_count = db.query(User).filter(
-                User.is_verified == False,
-                User.created_at < time_threshold
-            ).delete()
-            db.commit()
-            logger.debug(f"✅ Deleted {deleted_count} unverified users at {datetime.utcnow()}")
-            
-        except Exception as e:
-            db.rollback()
-            logger.error(f"❌ Error deleting unverified users: {e}")
-        finally:
-            db.close()
+def delete_unverified_users(db: Session):
+    try:
+        time_threshold = datetime.utcnow() - timedelta(minutes=5)
+        deleted_count = db.query(User).filter(
+            User.is_verified == False,
+            User.created_at < time_threshold
+        ).delete()
+        db.commit()
+        logger.debug(f"✅ Deleted {deleted_count} unverified users at {datetime.utcnow()}")
+        return {"deleted": deleted_count}
+    except Exception as e:
+        db.rollback()
+        logger.error(f"❌ Error deleting unverified users: {e}")
+        raise
+        
+        
+        
         
         
         

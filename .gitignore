@@ -129,6 +129,7 @@ celerybeat.pid
 
 # Environments
 .env
+.env.prod.yaml
 .venv
 env/
 venv/

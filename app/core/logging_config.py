@@ -1,6 +1,7 @@
 import logging
 from logging.config import dictConfig
 import sys
+import os
 
 LOGGING_CONFIG = {
     "version": 1,
@@ -10,43 +11,22 @@ LOGGING_CONFIG = {
             "format": "%(levelname)s:     %(asctime)s - %(name)s - %(message)s",
             "datefmt": "%d-%m-%Y %H:%M:%S",
         },
-        "detailed": {
-            "format": "%(asctime)s - %(levelname)s - %(name)s - [%(module)s:%(lineno)d] - %(message)s",
-            "datefmt": "%d-%m-%Y %H:%M:%S",
-        },
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "level": "INFO",
+            "level": "DEBUG",
             "formatter": "default",
             "stream": sys.stdout,
-        },
-        "file": {
-            "class": "logging.handlers.RotatingFileHandler",
-            "level": "DEBUG",
-            "formatter": "detailed",
-            "filename": "fast_diet_app.log",
-            "maxBytes": 10485760,  # 10 MB per file
-            "backupCount": 5,  # Keep 5 backup files
-            "encoding": "utf8",
         },
     },
     "loggers": {
         "root": {
-            "level": "INFO",
-            "handlers": ["console", "file"],
+            "level": "DEBUG",
+            "handlers": ["console"],
         },
-        "uvicorn.error": {
-            "level": "WARNING",
-            "handlers": ["console", "file"],
-            "propagate": False,
-        },
-        "uvicorn.access": {
-            "level": "WARNING",
-            "handlers": ["console", "file"],
-            "propagate": False,
-        },
+        "uvicorn.error": { "level": "WARNING", "handlers": ["console"], "propagate": False },
+        "uvicorn.access": { "level": "WARNING", "handlers": ["console"], "propagate": False },
     },
 }
 
