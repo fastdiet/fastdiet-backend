@@ -1,0 +1,39 @@
+steps:
+  # 1. Construir la imagen Docker
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'build',
+        '--platform=linux/amd64',
+        '-t',
+        'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest',
+        '.'
+      ]
+
+  # 2. Subir la imagen a Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      [
+        'push',
+        'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
+      ]
+
+  # 3. Desplegar en Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      [
+        'run',
+        'deploy',
+        'fastdiet-backend-service',
+        '--image=europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest',
+        '--platform=managed',
+        '--region=europe-west1',
+        '--allow-unauthenticated',
+        '--service-account=fastdiet-service-account@fastdiet.iam.gserviceaccount.com',
+        '--add-cloudsql-instances=fastdiet:europe-west1:fastdiet-db-instance',
+        '--env-vars-file=.env.prod.yaml'
+      ]
+
+images:
+  - 'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
