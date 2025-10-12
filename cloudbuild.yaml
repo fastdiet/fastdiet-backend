@@ -1,5 +1,6 @@
 options:
   logging: CLOUD_LOGGING_ONLY
+
 steps:
   # 1️⃣ Build Docker image
   - name: 'gcr.io/cloud-builders/docker'
@@ -21,6 +22,7 @@ steps:
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Run Migrations'
     entrypoint: /bin/sh
+    secretEnv: ['INSTANCE_CONNECTION_NAME', 'DB_USER', 'DB_PASS', 'DB_NAME']
     args:
       - -c
       - |
@@ -29,7 +31,7 @@ steps:
         chmod +x /cloud_sql_proxy
 
         echo "   - Connecting to Cloud SQL instance..."
-        /cloud_sql_proxy --address 0.0.0.0 --port 5432 $$INSTANCE_CONNECTION_NAME &
+        /cloud_sql_proxy --address 0.0.0.0 --port 3306 $$INSTANCE_CONNECTION_NAME &
         
         sleep 5
 
@@ -39,7 +41,7 @@ steps:
           -e DB_PASS=$$DB_PASS \
           -e DB_NAME=$$DB_NAME \
           -e DB_HOST=172.17.0.1 \
-          -e DB_PORT=5432 \
+          -e DB_PORT=3306 \
           europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest \
           alembic upgrade head
         echo "✅ Migration completed successfully."
