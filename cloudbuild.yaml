@@ -18,37 +18,35 @@ steps:
     ]
 
   # 3️⃣ Ejecutar migraciones Alembic
-  # Este paso ahora es correcto. No tiene el bloque 'secretManager' dentro.
-  # Las variables como $$INSTANCE_CONNECTION_NAME se sustituirán automáticamente
-  # por los valores definidos en el bloque 'availableSecrets' de abajo.
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
-    id: 'Run Migrations' # Es una buena práctica darle un ID al paso
+    id: 'Run Migrations'
     entrypoint: /bin/sh
     args:
       - -c
       - |
-        echo "✅ Iniciando el paso de migración de la base de datos..."
+        echo "✅ Initiating database migration..."
         wget https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.2/cloud-sql-proxy.linux.amd64 -O /cloud_sql_proxy
         chmod +x /cloud_sql_proxy
 
-        echo "   - Conectando a la instancia de Cloud SQL..."
-        /cloud_sql_proxy --address 0.0.0.0 --port 5432 $$INSTANCE_CONNECTION_NAME &
+        echo "   - Connecting to Cloud SQL instance..."
+        /cloud_sql_proxy --address 0.0.0.0 --port 5432 $INSTANCE_CONNECTION_NAME &
         
         sleep 5
 
-        echo "   - Ejecutando 'alembic upgrade head'..."
+        echo "   - Executing 'alembic upgrade head'..."
         docker run --network cloudbuild \
-          -e DB_USER=$$DB_USER \
-          -e DB_PASS=$$DB_PASS \
-          -e DB_NAME=$$DB_NAME \
+          -e DB_USER=$DB_USER \
+          -e DB_PASS=$DB_PASS \
+          -e DB_NAME=$DB_NAME \
           -e DB_HOST=172.17.0.1 \
           -e DB_PORT=5432 \
           europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest \
           alembic upgrade head
         echo "✅ Migración completada con éxito."
+    # Se añade el bloque 'secretEnv'
+    secretEnv: ['INSTANCE_CONNECTION_NAME', 'DB_USER', 'DB_PASS', 'DB_NAME']
 
   # 4️⃣ Desplegar en Cloud Run
-  # Este paso no cambia, ya estaba correcto.
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Deploy to Cloud Run'
     entrypoint: gcloud
@@ -77,20 +75,5 @@ steps:
       - '--set-secrets=TASK_SECRET_KEY=TASK_SECRET_KEY:latest'
       - '--set-secrets=GCP_PROJECT_ID=GCP_PROJECT_ID:latest'
 
-# Opcional: especificar las imágenes creadas
 images:
   - 'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
-
-# --- BLOQUE CORRECTO PARA DEFINIR SECRETOS ---
-# Este bloque debe estar al nivel superior del archivo (misma indentación que 'steps').
-# Hace que los secretos estén disponibles para todos los pasos de la compilación.
-availableSecrets:
-  secretManager:
-    - versionName: projects/fastdiet/secrets/INSTANCE_CONNECTION_NAME/versions/latest
-      env: 'INSTANCE_CONNECTION_NAME'
-    - versionName: projects/fastdiet/secrets/DB_USER/versions/latest
-      env: 'DB_USER'
-    - versionName: projects/fastdiet/secrets/DB_PASS/versions/latest
-      env: 'DB_PASS'
-    - versionName: projects/fastdiet/secrets/DB_NAME/versions/latest
-      env: 'DB_NAME'
