@@ -40,11 +40,11 @@ steps:
         sleep 10
         
         echo "   - Running Alembic migrations..."
-        docker run --network cloudbuild \
+        docker run --network=host \
           -e DB_USER=$$DB_USER \
           -e DB_PASS=$$DB_PASS \
           -e DB_NAME=$$DB_NAME \
-          -e DB_HOST=host.docker.internal \
+          -e DB_HOST=127.0.0.1 \
           -e DB_PORT=3306 \
           europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest \
           alembic upgrade head
