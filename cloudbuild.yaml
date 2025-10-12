@@ -28,16 +28,16 @@ steps:
         wget https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.2/cloud-sql-proxy.linux.amd64 -O /cloud_sql_proxy
         chmod +x /cloud_sql_proxy
 
-        echo "   - Connecting to Cloud SQL instance..."
-        /cloud_sql_proxy --address 0.0.0.0 --port 5432 $INSTANCE_CONNECTION_NAME &
+        echo "   - Connectiong to Cloud SQL instance..."
+        /cloud_sql_proxy --address 0.0.0.0 --port 5432 $$INSTANCE_CONNECTION_NAME &
         
         sleep 5
 
         echo "   - Executing 'alembic upgrade head'..."
         docker run --network cloudbuild \
-          -e DB_USER=$DB_USER \
-          -e DB_PASS=$DB_PASS \
-          -e DB_NAME=$DB_NAME \
+          -e DB_USER=$$DB_USER \
+          -e DB_PASS=$$DB_PASS \
+          -e DB_NAME=$$DB_NAME \
           -e DB_HOST=172.17.0.1 \
           -e DB_PORT=5432 \
           europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest \
