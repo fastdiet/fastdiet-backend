@@ -1,15 +1,7 @@
 options:
   logging: CLOUD_LOGGING_ONLY
-
-secrets:
-- secretEnv:
-    INSTANCE_CONNECTION_NAME: projects/fastdiet/secrets/INSTANCE_CONNECTION_NAME/versions/latest
-    DB_USER: projects/fastdiet/secrets/DB_USER/versions/latest
-    DB_PASS: projects/fastdiet/secrets/DB_PASS/versions/latest
-    DB_NAME: projects/fastdiet/secrets/DB_NAME/versions/latest
-
 steps:
-  # 1️⃣ Construir la imagen de Docker
+  # 1️⃣ Build Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
@@ -18,31 +10,27 @@ steps:
       '.'
     ]
 
-  # 2️⃣ Subir la imagen al Artifact Registry
+  # 2️⃣ Push image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'push',
       'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
     ]
 
-  # 3️⃣ Ejecutar migraciones Alembic
+  # 3️⃣ Run Alembic migrations
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Run Migrations'
     entrypoint: /bin/sh
-    secretEnv: ['INSTANCE_CONNECTION_NAME', 'DB_USER', 'DB_PASS', 'DB_NAME']
     args:
       - -c
       - |
-        echo "✅ Initiating database migration..."
-
-        # Descargar Cloud SQL Proxy
+        echo "✅ Initiating database migration step..."
         wget https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.2/cloud-sql-proxy.linux.amd64 -O /cloud_sql_proxy
         chmod +x /cloud_sql_proxy
 
         echo "   - Connecting to Cloud SQL instance..."
         /cloud_sql_proxy --address 0.0.0.0 --port 5432 $$INSTANCE_CONNECTION_NAME &
-
-        # Esperar a que el proxy esté listo
+        
         sleep 5
 
         echo "   - Executing 'alembic upgrade head'..."
@@ -54,10 +42,9 @@ steps:
           -e DB_PORT=5432 \
           europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest \
           alembic upgrade head
-
         echo "✅ Migration completed successfully."
 
-  # 4️⃣ Desplegar en Cloud Run
+  # 4️⃣ Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Deploy to Cloud Run'
     entrypoint: gcloud
@@ -88,3 +75,15 @@ steps:
 
 images:
   - 'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
+
+# Global definition of secrets available to all build steps
+availableSecrets:
+  secretManager:
+    - versionName: projects/fastdiet/secrets/INSTANCE_CONNECTION_NAME/versions/latest
+      env: 'INSTANCE_CONNECTION_NAME'
+    - versionName: projects/fastdiet/secrets/DB_USER/versions/latest
+      env: 'DB_USER'
+    - versionName: projects/fastdiet/secrets/DB_PASS/versions/latest
+      env: 'DB_PASS'
+    - versionName: projects/fastdiet/secrets/DB_NAME/versions/latest
+      env: 'DB_NAME'
