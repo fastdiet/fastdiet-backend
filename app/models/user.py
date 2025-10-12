@@ -30,3 +30,4 @@ class User(Base):
     password_reset_codes = relationship("PasswordResetCode", back_populates="user", cascade="all, delete-orphan", passive_deletes=True)
     refresh_tokens = relationship("RefreshToken", back_populates="user", cascade="all, delete-orphan", passive_deletes=True)
     created_recipes = relationship("Recipe", back_populates="creator", cascade="all, delete-orphan", passive_deletes=True)
+    feedback = relationship("Feedback", back_populates="user", cascade="all, delete-orphan", passive_deletes=True)
