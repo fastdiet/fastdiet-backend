@@ -18,24 +18,43 @@ steps:
     ]
 
   # 3️⃣ Ejecutar migraciones Alembic
-  - name: 'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
-    entrypoint: sh
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: /bin/sh
     args:
-      - '-c'
+      - -c
       - |
-        echo "Running Alembic migrations..."
-        alembic upgrade head
+        echo "✅ Initiating database migration..."
+        wget https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.2/cloud-sql-proxy.linux.amd64 -O /cloud_sql_proxy
+        chmod +x /cloud_sql_proxy
 
-    secretEnv:
-      - INSTANCE_CONNECTION_NAME
-      - DB_USER
-      - DB_PASS
-      - DB_NAME
-    env:
-      - INSTANCE_CONNECTION_NAME=$(INSTANCE_CONNECTION_NAME)
-      - DB_USER=$(DB_USER)
-      - DB_PASS=$(DB_PASS)
-      - DB_NAME=$(DB_NAME)
+        # Inicia el proxy en segundo plano. Este crea un túnel seguro a tu base de datos.
+        echo "   - Conectando a la instancia de Cloud SQL..."
+        /cloud_sql_proxy --address 0.0.0.0 --port 5432 $$INSTANCE_CONNECTION_NAME &
+        
+        # Espera unos segundos para asegurar que la conexión del proxy se establezca.
+        sleep 5
+
+        # Ejecuta la migración usando la imagen de tu aplicación.
+        # Le pasamos las credenciales y le indicamos que se conecte al proxy (en 172.17.0.1).
+        echo "   - Executing 'alembic upgrade head'..."
+        docker run --network cloudbuild \
+          -e DB_USER=$$DB_USER \
+          -e DB_PASS=$$DB_PASS \
+          -e DB_NAME=$$DB_NAME \
+          -e DB_HOST=172.17.0.1 \
+          -e DB_PORT=5432 \
+          europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest \
+          alembic upgrade head
+        echo "✅ Migration completed successfully."
+    secretManager:
+      - versionName: projects/fastdiet/secrets/INSTANCE_CONNECTION_NAME/versions/latest
+        env: 'INSTANCE_CONNECTION_NAME'
+      - versionName: projects/fastdiet/secrets/DB_USER/versions/latest
+        env: 'DB_USER'
+      - versionName: projects/fastdiet/secrets/DB_PASS/versions/latest
+        env: 'DB_PASS'
+      - versionName: projects/fastdiet/secrets/DB_NAME/versions/latest
+        env: 'DB_NAME'
 
   # 4️⃣ Desplegar en Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
