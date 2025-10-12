@@ -19,47 +19,26 @@ steps:
     ]
 
   # 3️⃣ Run Alembic migrations
-  - name: 'gcr.io/cloud-builders/docker'
+  - name: 'gcr.io/google-appengine/exec-wrapper'
     id: 'Run Migrations'
     secretEnv: ['INSTANCE_CONNECTION_NAME', 'DB_USER', 'DB_PASS', 'DB_NAME']
-    entrypoint: 'bash'
     args:
-      - '-c'
-      - |
-        echo "✅ Initiating database migration step..."
-        
-        # Descargar cloud-sql-proxy
-        curl -o cloud-sql-proxy https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.2/cloud-sql-proxy.linux.amd64
-        chmod +x cloud-sql-proxy
-        
-        echo "   - Starting Cloud SQL Proxy..."
-        ./cloud-sql-proxy --address 0.0.0.0 --port 3306 $$INSTANCE_CONNECTION_NAME &
-        PROXY_PID=$$!
-        
-        echo "   - Waiting for proxy to be ready..."
-        sleep 10
-        
-        echo "   - Running Alembic migrations..."
-        docker run --network=host \
-          -e DB_USER=$$DB_USER \
-          -e DB_PASS=$$DB_PASS \
-          -e DB_NAME=$$DB_NAME \
-          -e DB_HOST=127.0.0.1 \
-          -e DB_PORT=3306 \
-          europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest \
-          alembic upgrade head
-        
-        MIGRATION_EXIT_CODE=$$?
-        
-        echo "   - Stopping Cloud SQL Proxy..."
-        kill $$PROXY_PID
-        
-        if [ $$MIGRATION_EXIT_CODE -eq 0 ]; then
-          echo "✅ Migration completed successfully."
-        else
-          echo "❌ Migration failed with exit code $$MIGRATION_EXIT_CODE"
-          exit $$MIGRATION_EXIT_CODE
-        fi
+      - '-i'
+      - 'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
+      - '-s'
+      - '$$INSTANCE_CONNECTION_NAME'
+      - '-e'
+      - 'DB_USER=$$DB_USER'
+      - '-e'
+      - 'DB_PASS=$$DB_PASS'
+      - '-e'
+      - 'DB_NAME=$$DB_NAME'
+      - '-e'
+      - 'DB_HOST=/cloudsql/$$INSTANCE_CONNECTION_NAME'
+      - '--'
+      - 'alembic'
+      - 'upgrade'
+      - 'head'
 
   # 4️⃣ Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'

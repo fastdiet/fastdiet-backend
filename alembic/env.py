@@ -13,10 +13,16 @@ if os.environ.get("DB_HOST"):
     db_user = os.environ.get("DB_USER")
     db_pass = os.environ.get("DB_PASS")
     db_host = os.environ.get("DB_HOST")
-    db_port = os.environ.get("DB_PORT")
     db_name = os.environ.get("DB_NAME")
     
-    prod_database_url = f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
+    # Si DB_HOST empieza con /, es un Unix socket (Cloud SQL)
+    if db_host.startswith('/'):
+        # Conexión via Unix socket
+        prod_database_url = f"mysql+pymysql://{db_user}:{db_pass}@/{db_name}?unix_socket={db_host}"
+    else:
+        # Conexión TCP normal
+        db_port = os.environ.get("DB_PORT", "3306")
+        prod_database_url = f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
     
     config.set_main_option('sqlalchemy.url', prod_database_url)
 else:
