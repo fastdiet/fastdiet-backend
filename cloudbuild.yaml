@@ -18,25 +18,25 @@ steps:
     ]
 
   # 3️⃣ Ejecutar migraciones Alembic
+  # Este paso ahora es correcto. No tiene el bloque 'secretManager' dentro.
+  # Las variables como $$INSTANCE_CONNECTION_NAME se sustituirán automáticamente
+  # por los valores definidos en el bloque 'availableSecrets' de abajo.
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Run Migrations' # Es una buena práctica darle un ID al paso
     entrypoint: /bin/sh
     args:
       - -c
       - |
-        echo "✅ Initiating database migration..."
+        echo "✅ Iniciando el paso de migración de la base de datos..."
         wget https://storage.googleapis.com/cloud-sql-connectors/cloud-sql-proxy/v2.8.2/cloud-sql-proxy.linux.amd64 -O /cloud_sql_proxy
         chmod +x /cloud_sql_proxy
 
-        # Inicia el proxy en segundo plano. Este crea un túnel seguro a tu base de datos.
         echo "   - Conectando a la instancia de Cloud SQL..."
         /cloud_sql_proxy --address 0.0.0.0 --port 5432 $$INSTANCE_CONNECTION_NAME &
         
-        # Espera unos segundos para asegurar que la conexión del proxy se establezca.
         sleep 5
 
-        # Ejecuta la migración usando la imagen de tu aplicación.
-        # Le pasamos las credenciales y le indicamos que se conecte al proxy (en 172.17.0.1).
-        echo "   - Executing 'alembic upgrade head'..."
+        echo "   - Ejecutando 'alembic upgrade head'..."
         docker run --network cloudbuild \
           -e DB_USER=$$DB_USER \
           -e DB_PASS=$$DB_PASS \
@@ -45,19 +45,12 @@ steps:
           -e DB_PORT=5432 \
           europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest \
           alembic upgrade head
-        echo "✅ Migration completed successfully."
-    secretManager:
-      - versionName: projects/fastdiet/secrets/INSTANCE_CONNECTION_NAME/versions/latest
-        env: 'INSTANCE_CONNECTION_NAME'
-      - versionName: projects/fastdiet/secrets/DB_USER/versions/latest
-        env: 'DB_USER'
-      - versionName: projects/fastdiet/secrets/DB_PASS/versions/latest
-        env: 'DB_PASS'
-      - versionName: projects/fastdiet/secrets/DB_NAME/versions/latest
-        env: 'DB_NAME'
+        echo "✅ Migración completada con éxito."
 
   # 4️⃣ Desplegar en Cloud Run
+  # Este paso no cambia, ya estaba correcto.
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Deploy to Cloud Run'
     entrypoint: gcloud
     args:
       - 'run'
@@ -87,3 +80,17 @@ steps:
 # Opcional: especificar las imágenes creadas
 images:
   - 'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
+
+# --- BLOQUE CORRECTO PARA DEFINIR SECRETOS ---
+# Este bloque debe estar al nivel superior del archivo (misma indentación que 'steps').
+# Hace que los secretos estén disponibles para todos los pasos de la compilación.
+availableSecrets:
+  secretManager:
+    - versionName: projects/fastdiet/secrets/INSTANCE_CONNECTION_NAME/versions/latest
+      env: 'INSTANCE_CONNECTION_NAME'
+    - versionName: projects/fastdiet/secrets/DB_USER/versions/latest
+      env: 'DB_USER'
+    - versionName: projects/fastdiet/secrets/DB_PASS/versions/latest
+      env: 'DB_PASS'
+    - versionName: projects/fastdiet/secrets/DB_NAME/versions/latest
+      env: 'DB_NAME'
