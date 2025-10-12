@@ -42,8 +42,7 @@ steps:
           -e DB_PORT=5432 \
           europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest \
           alembic upgrade head
-        echo "✅ Migración completada con éxito."
-    # Se añade el bloque 'secretEnv'
+        echo "✅ Migration completed successfully."
     secretEnv: ['INSTANCE_CONNECTION_NAME', 'DB_USER', 'DB_PASS', 'DB_NAME']
 
   # 4️⃣ Desplegar en Cloud Run
