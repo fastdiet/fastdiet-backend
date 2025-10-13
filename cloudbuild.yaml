@@ -2,7 +2,7 @@ options:
   logging: CLOUD_LOGGING_ONLY
 
 steps:
-  # 1️⃣ Build Docker image
+  # 1. Build Docker image
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'build',
@@ -10,13 +10,16 @@ steps:
       '-t', 'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest',
       '.'
     ]
+    id: 'Build Image'
 
-  # 2️⃣ Push image to Artifact Registry
+  # 2. Push image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
     args: [
       'push',
       'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
     ]
+    waitFor:
+      - 'Build Image'
 
   # 3a. Start Cloud SQL Proxy in the background
   - name: 'gcr.io/cloudsql-docker/gce-proxy:1.33.9'
@@ -35,7 +38,7 @@ steps:
     secretEnv: ['DB_USER', 'DB_PASS', 'DB_NAME']
     args:
       - '-c'
-      - 'alembic upgrade head'
+      - 'pip install alembic && alembic upgrade head' # Aseguramos que alembic esté disponible
     env:
       - 'DB_HOST=127.0.0.1'
       - 'DB_PORT=3306'
@@ -74,6 +77,8 @@ steps:
       - '--set-secrets=CORS_ORIGINS=CORS_ORIGINS:latest'
       - '--set-secrets=TASK_SECRET_KEY=TASK_SECRET_KEY:latest'
       - '--set-secrets=GCP_PROJECT_ID=GCP_PROJECT_ID:latest'
+    waitFor:
+      - 'Run Migrations'
 
 images:
   - 'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
