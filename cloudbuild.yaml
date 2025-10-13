@@ -18,6 +18,7 @@ steps:
       'push',
       'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
     ]
+    id: 'Push Image'
     waitFor:
       - 'Build Image'
 
