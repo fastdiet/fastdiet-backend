@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["feedback"], prefix="/feedback")
 
 @router.post(
-    "/",
+    "",
     response_model=SuccessResponse,
     status_code=status.HTTP_201_CREATED
 )
