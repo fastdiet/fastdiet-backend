@@ -22,18 +22,28 @@ steps:
     waitFor:
       - 'Build Image'
 
-  # 3a. Start Cloud SQL Proxy in the background
-  - name: 'gcr.io/cloudsql-docker/gce-proxy:1.33.9'
-    id: 'Start Cloud SQL Proxy'
-    entrypoint: 'sh'
+  # 3a. Prepare the Cloud SQL Proxy command script
+  - name: 'bash'
+    id: 'Prepare Proxy Command'
     secretEnv: ['INSTANCE_CONNECTION_NAME']
+    entrypoint: 'bash'
     args:
       - '-c'
-      - '/cloud_sql_proxy -instances=$$INSTANCE_CONNECTION_NAME=tcp:3306'
+      - |
+        echo "#!/bin/sh" > /workspace/run_proxy.sh
+        echo "/cloud_sql_proxy -instances=$$INSTANCE_CONNECTION_NAME=tcp:3306" >> /workspace/run_proxy.sh
+        chmod +x /workspace/run_proxy.sh
     waitFor:
       - 'Push Image'
 
-  # 3b. Run Alembic migrations connecting through the proxy
+  # 3b. Start Cloud SQL Proxy using the prepared script
+  - name: 'gcr.io/cloudsql-docker/gce-proxy:1.33.9'
+    id: 'Start Cloud SQL Proxy'
+    entrypoint: '/workspace/run_proxy.sh' # Execute the script from the shared volume
+    waitFor:
+      - 'Prepare Proxy Command'
+
+  # 3c. Run Alembic migrations connecting through the proxy
   - name: 'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
     id: 'Run Migrations'
     entrypoint: 'bash'
