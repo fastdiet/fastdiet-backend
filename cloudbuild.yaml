@@ -18,7 +18,7 @@ steps:
       'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
     ]
 
-  # 3️⃣ Run Alembic migrations
+  # 3️⃣ Run Alembic migrations (RUTA CORREGIDA)
   - name: 'gcr.io/google-appengine/exec-wrapper'
     id: 'Run Migrations'
     entrypoint: 'bash'
@@ -26,7 +26,7 @@ steps:
     args:
       - '-c'
       - |
-        /buildstep/exec_wrapper \
+        /exec_wrapper \
         -i 'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest' \
         -s "$$INSTANCE_CONNECTION_NAME" \
         -e DB_USER="$$DB_USER" \
