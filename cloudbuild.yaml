@@ -14,7 +14,7 @@ steps:
 
   # 2. Push image to Artifact Registry
   - name: 'gcr.io/cloud-builders/docker'
-    id: 'Push Image' # ID añadido aquí
+    id: 'Push Image'
     args: [
       'push',
       'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
@@ -22,38 +22,7 @@ steps:
     waitFor:
       - 'Build Image'
 
-  - name: 'gcr.io/cloud-sql-connectors/cloud-sql-proxy:latest'
-    id: 'Cloud SQL Proxy'
-    secretEnv: ['INSTANCE_CONNECTION_NAME']
-    entrypoint: 'sh'
-    args:
-      - '-c'
-      - '/cloud-sql-proxy --unix-socket=/cloudsql $$INSTANCE_CONNECTION_NAME'
-    volumes:
-      - name: cloudsql
-        path: /cloudsql
-
-  # 4. Run Alembic migrations
-  - name: 'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
-    id: 'Run Migrations'
-    secretEnv: ['INSTANCE_CONNECTION_NAME', 'DB_USER', 'DB_PASS', 'DB_NAME']
-    entrypoint: 'bash'
-    args:
-      - '-c'
-      - |
-        echo "Esperando a que Cloud SQL Proxy esté listo..."
-        sleep 10
-        
-        echo "Running Alembic migrations..."
-        export DB_HOST="/cloudsql/$$INSTANCE_CONNECTION_NAME"
-        alembic upgrade head
-    volumes:
-      - name: cloudsql
-        path: /cloudsql
-    waitFor:
-      - 'Push Image'
-
-  # 4️⃣ Deploy to Cloud Run
+  # 3 Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     id: 'Deploy to Cloud Run'
     entrypoint: gcloud
@@ -82,18 +51,7 @@ steps:
       - '--set-secrets=TASK_SECRET_KEY=TASK_SECRET_KEY:latest'
       - '--set-secrets=GCP_PROJECT_ID=GCP_PROJECT_ID:latest'
     waitFor:
-      - 'Run Migrations'
+      - 'Push Image'
 
 images:
   - 'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
-
-availableSecrets:
-  secretManager:
-    - versionName: projects/fastdiet/secrets/INSTANCE_CONNECTION_NAME/versions/latest
-      env: 'INSTANCE_CONNECTION_NAME'
-    - versionName: projects/fastdiet/secrets/DB_USER/versions/latest
-      env: 'DB_USER'
-    - versionName: projects/fastdiet/secrets/DB_PASS/versions/latest
-      env: 'DB_PASS'
-    - versionName: projects/fastdiet/secrets/DB_NAME/versions/latest
-      env: 'DB_NAME'
