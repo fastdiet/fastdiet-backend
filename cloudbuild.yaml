@@ -25,10 +25,11 @@ steps:
   # 3a. Start Cloud SQL Proxy in the background
   - name: 'gcr.io/cloudsql-docker/gce-proxy:1.33.9'
     id: 'Start Cloud SQL Proxy'
-    entrypoint: '/cloud_sql_proxy'
-    args:
-      - '-instances=$$INSTANCE_CONNECTION_NAME=tcp:3306'
+    entrypoint: 'sh'
     secretEnv: ['INSTANCE_CONNECTION_NAME']
+    args:
+      - '-c'
+      - '/cloud_sql_proxy -instances=$$INSTANCE_CONNECTION_NAME=tcp:3306'
     waitFor:
       - 'Push Image'
 
