@@ -22,39 +22,22 @@ steps:
     waitFor:
       - 'Build Image'
 
-   # 3. Run migrations using Cloud SQL Proxy as sidecar
-  - name: 'gcr.io/cloud-builders/docker'
+    # 3️⃣ Ejecutar migraciones Alembic
+  - name: 'europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest'
     id: 'Run Migrations'
-    secretEnv: ['INSTANCE_CONNECTION_NAME', 'DB_USER', 'DB_PASS', 'DB_NAME']
     entrypoint: 'bash'
+    secretEnv: ['DB_USER', 'DB_PASS', 'DB_NAME', 'INSTANCE_CONNECTION_NAME']
     args:
       - '-c'
       - |
-        wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -O cloud_sql_proxy
-        chmod +x cloud_sql_proxy
-        
-        ./cloud_sql_proxy -instances=$$INSTANCE_CONNECTION_NAME=tcp:3306 & PROXY_PID=$!
-        
-        echo "Waiting for Cloud SQL Proxy to be ready..."
-        sleep 10
-        
-        docker run --rm \
-          --network="host" \
-          -e DB_HOST=127.0.0.1 \
-          -e DB_PORT=3306 \
-          -e DB_USER=$$DB_USER \
-          -e DB_PASS=$$DB_PASS \
-          -e DB_NAME=$$DB_NAME \
-          europe-west1-docker.pkg.dev/fastdiet/fastdiet-repo/fastdiet-backend:latest \
-          alembic upgrade head
-        
-        MIGRATION_RESULT=$?
-        
-        kill $PROXY_PID
-        
-        exit $MIGRATION_RESULT
-    waitFor:
-      - 'Push Image'
+        echo "Running Alembic migrations..."
+        export DB_HOST="/cloudsql/$INSTANCE_CONNECTION_NAME"
+        export DB_PORT=3306
+        alembic upgrade head
+    volumes:
+      - name: cloudsql
+        path: /cloudsql
+    waitFor: ['Push Image']
 
   # 4️⃣ Deploy to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
