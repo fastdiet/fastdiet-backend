@@ -33,10 +33,8 @@ steps:
         wget https://dl.google.com/cloudsql/cloud_sql_proxy.linux.amd64 -O cloud_sql_proxy
         chmod +x cloud_sql_proxy
         
-        ./cloud_sql_proxy -instances=$$INSTANCE_CONNECTION_NAME=tcp:3306 &
-        PROXY_PID=$!
+        ./cloud_sql_proxy -instances=$$INSTANCE_CONNECTION_NAME=tcp:3306 & PROXY_PID=$!
         
-        # Esperar a que el proxy esté listo
         echo "Waiting for Cloud SQL Proxy to be ready..."
         sleep 10
         
