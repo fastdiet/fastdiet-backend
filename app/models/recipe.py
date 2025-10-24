@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Column, ForeignKey, Integer, String, Boolean, Float, Text
+from sqlalchemy import JSON, TIMESTAMP, Column, ForeignKey, Integer, String, Boolean, Float, Text, func
 from sqlalchemy.orm import relationship
 
 from app.db.db_connection import Base
@@ -36,6 +36,8 @@ class Recipe(Base):
 
     analyzed_instructions = Column(JSON, nullable=True)
     analyzed_instructions_es = Column(JSON, nullable=True)
+    created_at = Column(TIMESTAMP, default=func.now())
+    updated_at = Column(TIMESTAMP, default=func.now(), onupdate=func.now())
     
     
     cuisines = relationship("CuisineRegion", secondary="recipes_cuisines", back_populates="recipes", passive_deletes=True)

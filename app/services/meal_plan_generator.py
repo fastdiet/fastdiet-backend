@@ -128,7 +128,7 @@ class MealPlanGenerator:
 
             if not api_result.get("error"):
                 for recipe_data in api_result.get("results", []):
-                    db_recipe = get_or_create_spoonacular_recipe(self.db, recipe_data)
+                    db_recipe, was_created = get_or_create_spoonacular_recipe(self.db, recipe_data)
 
                     if db_recipe and diet_used_in_query:
                         is_diet_already_associated = any(

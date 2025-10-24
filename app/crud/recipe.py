@@ -179,7 +179,7 @@ def get_or_create_spoonacular_recipe(db: Session, recipe_data: dict):
 
     recipe = db.query(Recipe).filter_by(spoonacular_id=recipe_data["id"]).first()
     if recipe:
-        return recipe
+        return recipe, False
     
     calories = None
     for nutrient in recipe_data.get("nutrition", {}).get("nutrients", []):
@@ -253,5 +253,5 @@ def get_or_create_spoonacular_recipe(db: Session, recipe_data: dict):
     if all_associations:
         db.add_all(all_associations)
                
-    return new_recipe
+    return new_recipe, True
 

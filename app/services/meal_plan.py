@@ -99,7 +99,7 @@ async def get_meal_replacement_suggestions(db: Session, preferences: UserPrefere
             return list(recipe_suggestions.values())
         
         for recipe in api_result.get("results", []):
-            db_recipe = get_or_create_spoonacular_recipe(db, recipe)
+            db_recipe, was_created = get_or_create_spoonacular_recipe(db, recipe)
             if db_recipe and diet_used_in_query:
                 is_diet_already_associated = any(
                     dt.name.lower() == diet_used_in_query.lower() 

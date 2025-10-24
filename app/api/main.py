@@ -10,7 +10,7 @@ from app.core.rate_limiter import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.errors import RateLimitExceeded
-from app.db.db_connection import Base, init_db
+from app.db.db_connection import init_db
 
 
 

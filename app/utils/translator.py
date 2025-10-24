@@ -98,6 +98,9 @@ UNIT_TRANSLATOR = {
     "strip": "tira",
     "leaf": "hojas",
     "large knob": "trozo grande",
+    "fillet": "filetes",
+    "Tb": "cucharadas",
+    "pkg": "paq",
 }
 
 REVERSED_UNIT_EXCEPTIONS = {v: k for k, v in UNIT_TRANSLATOR.items()}

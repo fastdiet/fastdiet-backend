@@ -91,7 +91,9 @@ class SpoonacularService:
         add_recipe_information: bool = True,
         add_recipe_instructions: bool = True,
         add_recipe_nutrition: bool = True,
-        number: int = 10
+        number: int = 10,
+        offset: int = 0,
+        query: str | None = None
     ) -> dict[str, Any]:
         params = {
             "diet": diet,
@@ -106,11 +108,15 @@ class SpoonacularService:
             "addRecipeInstructions": add_recipe_instructions,
             "addRecipeNutrition": add_recipe_nutrition,
             "fillIngredients": fill_ingredients,
-            "number": number
+            "number": number,
+            "offset": offset,
+            "query": query
         }
         params = {k: v for k, v in params.items() if v is not None}
         
-        logger.info(f"Searching spoonacular recipes with diet: {params.get('diet')}, intolerances: {params.get('intolerances')}")
+        logger.info(
+            f"Searching spoonacular recipes (offset={offset}, sort={sort}, number={number})"
+        )
         return await self._request_with_retry("GET", "recipes/complexSearch", params=params)
     
     async def compute_shopping_list(self, items: list[str]) -> dict[str, Any]:
