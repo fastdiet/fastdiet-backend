@@ -118,7 +118,7 @@ async def fetch_spoon_recipes(
 async def get_meal_replacement_suggestions(
         db: Session, preferences: UserPreferences,
         meal_item: MealItem | None, meal_type: str,
-        limit: int = 5, offset: int = 0, seed: float | None = None
+        limit: int = 5, offset: int = 0
     ) -> list[Recipe]:
     """Generates a list of recipe suggestions to replace a specific meal item"""
 
@@ -134,7 +134,7 @@ async def get_meal_replacement_suggestions(
         
         exclude_ids = {meal_item.recipe_id} if meal_item else {}
         db_suggestions = get_recipe_suggestions_from_db(
-            db, exclude_ids, preferences, db_dish_types_to_search, limit, None, None, offset, seed 
+            db, exclude_ids, preferences, db_dish_types_to_search, limit, None, None, offset
         )
         for recipe in db_suggestions:
             recipe_suggestions[recipe.id] = recipe
