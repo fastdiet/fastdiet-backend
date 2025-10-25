@@ -128,6 +128,7 @@ def get_recipe_suggestions_from_db(
         )
 
     FETCH_POOL = max(limit * 20, 100)
+
     random_block = (
         query.order_by(func.rand())
         .limit(FETCH_POOL)
@@ -136,11 +137,13 @@ def get_recipe_suggestions_from_db(
 
     ranked = (
         db.query(Recipe)
-        .select_entity_from(random_block)
+        .join(random_block, Recipe.id == random_block.c.id)
         .order_by(desc(Recipe.health_score), func.rand())
+        .offset(offset)
+        .limit(limit)
     )
-    
-    return ranked.offset(offset).limit(limit).all()
+
+    return ranked.all()
     
 
 def _create_recipe_nutrients(db: Session, recipe_id: int, nutrients_data: list) -> list[RecipesNutrient]:
