@@ -8,8 +8,7 @@ LOGGING_CONFIG = {
     "disable_existing_loggers": False,
     "formatters": {
         "default": {
-            "format": "%(levelname)s:     %(asctime)s - %(name)s - %(message)s",
-            "datefmt": "%d-%m-%Y %H:%M:%S",
+            "format": "%(levelname)s: %(name)s - %(message)s",
         },
     },
     "handlers": {
