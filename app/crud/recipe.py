@@ -1,5 +1,4 @@
 import logging
-import random
 from sqlalchemy import desc, func, or_
 from sqlalchemy.orm import Session, selectinload
 from app.core.meal_plan_config import MealPlanConfig
@@ -55,6 +54,7 @@ def get_recipe_suggestions_from_db(
     min_calories: float | None,
     max_calories: float | None,
     offset: int = 0,
+    seed: float | None = None
 ):
 
     query = db.query(Recipe).filter(
@@ -127,23 +127,22 @@ def get_recipe_suggestions_from_db(
             )
         )
 
+    random_func = func.rand(seed) if seed is not None else func.rand()
     FETCH_POOL = max(limit * 20, 100)
 
     random_block = (
-        query.order_by(func.rand())
+        query.order_by(random_func)
         .limit(FETCH_POOL)
         .subquery()
     )
 
-    ranked = (
+    ranked_query = (
         db.query(Recipe)
         .join(random_block, Recipe.id == random_block.c.id)
-        .order_by(desc(Recipe.health_score), func.rand())
-        .offset(offset)
-        .limit(limit)
+        .order_by(desc(Recipe.health_score), random_func)
     )
 
-    return ranked.all()
+    return ranked_query.offset(offset).limit(limit).all()
     
 
 def _create_recipe_nutrients(db: Session, recipe_id: int, nutrients_data: list) -> list[RecipesNutrient]:
