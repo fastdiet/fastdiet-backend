@@ -57,7 +57,7 @@ def get_recipe_suggestions_from_db(
     offset: int = 0
 ):
     logger.debug("--- Iniciando búsqueda de recetas en DB ---")
-    logger.debug(f"Tipos de plato a buscar: {db_dish_types}")
+    logger.info(f"Tipos de plato a buscar: {db_dish_types}")
     query = db.query(Recipe).filter(
         Recipe.id.notin_(exclude_recipe_ids),
         Recipe.spoonacular_id.isnot(None),
@@ -111,9 +111,9 @@ def get_recipe_suggestions_from_db(
         else:
             query = query.join(RecipesDietType).filter(RecipesDietType.diet_type_id == preferences.diet_type_id)
         
-        logger.debug(f"-> Después de aplicar filtro de dieta, resultados: {query.count()}")
+        logger.info(f"-> Después de aplicar filtro de dieta, resultados: {query.count()}")
     else:
-        logger.debug("-> Saltando filtro de dieta (usuario con dieta balanceada).")
+        logger.info("-> Saltando filtro de dieta (usuario con dieta balanceada).")
 
     # Filter by intolerances
     if preferences.intolerances:
@@ -123,7 +123,7 @@ def get_recipe_suggestions_from_db(
                 query = query.filter(Recipe.gluten_free == True)
             if 'dairy' in intolerance_name:
                 query = query.filter(Recipe.dairy_free == True)
-        logger.debug(f"-> Después de aplicar filtro de intolerancias, resultados: {query.count()}")
+        logger.info(f"-> Después de aplicar filtro de intolerancias, resultados: {query.count()}")
     else: 
         logger.info("-> Saltando filtro de intolerancias (usuario sin intolerancias).")
 

@@ -20,10 +20,6 @@ LOGGING_CONFIG = {
         },
     },
     "loggers": {
-        "root": {
-            "level": "DEBUG",
-            "handlers": ["console"],
-        },
         "uvicorn.error": { "level": "WARNING", "handlers": ["console"], "propagate": False },
         "uvicorn.access": { "level": "WARNING", "handlers": ["console"], "propagate": False },
     },
