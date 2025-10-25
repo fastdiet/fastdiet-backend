@@ -13,7 +13,8 @@ class Recipe(Base):
     creator_id = Column(Integer, ForeignKey('users.id', ondelete="CASCADE"), nullable=True)
     image_url = Column(String(255), nullable=True)
     image_type = Column(String(50), nullable=True)
-
+    health_score = Column(Float, nullable=True, index=True)
+    spoonacular_score = Column(Float, nullable=True, index=True)
     ready_min = Column(Integer, nullable=True)
     servings = Column(Integer, nullable=True)
     summary = Column(Text, nullable=True)

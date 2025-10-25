@@ -51,10 +51,72 @@ async def generate_meal_plan_for_user(db: Session, user_id: int):
     return get_meal_plan_for_response(db, db_meal_plan.id), status
 
 
-async def get_meal_replacement_suggestions(db: Session, preferences: UserPreferences, meal_item: MealItem | None, meal_type: str, limit: int = 5) -> list[Recipe]:
-    """Generates a list of recipe suggestions to replace a specific meal item"""
+async def fetch_spoon_recipes(
+    db: Session,
+    preferences: UserPreferences,
+    spoonacular_type_to_search: str,
+    limit: int,
+    offset: int = 0,
+) -> list[Recipe]:
+    """Fetch recipes from Spoonacular with diet & intolerances and persist them."""
 
-    min_calories, max_calories = None, None
+    spoon = SpoonacularService()
+    generator = MealPlanGenerator(preferences, db, None)
+    base_params = generator.base_search_params
+
+    diet_used = base_params.get("diet")
+
+    api_result = await spoon.search_recipes(
+        diet=diet_used,
+        intolerances=base_params.get("intolerances"),
+        cuisine=base_params.get("cuisines"),
+        type=spoonacular_type_to_search,
+        min_calories=None, 
+        max_calories=None,
+        number=limit,
+        offset=offset,
+        sort="random"
+    )
+
+    if api_result.get("error"):
+        logger.warning(f"Spoonacular error in suggestions: {api_result['error']}")
+        return []
+
+    recipes: list[Recipe] = []
+    added_ids = set()
+
+    for recipe in api_result.get("results", []):
+        db_recipe, _ = get_or_create_spoonacular_recipe(db, recipe)
+
+        if not db_recipe:
+            continue
+
+        if diet_used:
+            is_associated = any(
+                dt.name.lower() == diet_used.lower()
+                for dt in db_recipe.diet_types
+            )
+            if not is_associated:
+                diet_obj = get_or_create_diet_type(db, diet_used)
+                if diet_obj:
+                    db_recipe.diet_types.append(diet_obj)
+
+        if db_recipe.id not in added_ids:
+            recipes.append(db_recipe)
+            added_ids.add(db_recipe.id)
+
+
+        if len(recipes) >= limit:
+            break
+    
+    db.commit() 
+    logger.info(f"[Spoonacular] offset={offset} -> {len(recipes)} recipes stored")
+
+    return recipes
+
+
+async def get_meal_replacement_suggestions(db: Session, preferences: UserPreferences, meal_item: MealItem | None, meal_type: str, limit: int = 5, offset: int = 0) -> list[Recipe]:
+    """Generates a list of recipe suggestions to replace a specific meal item"""
 
     config = MEAL_TYPE_SUGGESTION_CONFIG.get(meal_type, MEAL_TYPE_SUGGESTION_CONFIG["snack"])
     db_dish_types_to_search = config["db_dish_types"]
@@ -68,53 +130,35 @@ async def get_meal_replacement_suggestions(db: Session, preferences: UserPrefere
         
         exclude_ids = {meal_item.recipe_id} if meal_item else {}
         db_suggestions = get_recipe_suggestions_from_db(
-            db, exclude_ids, preferences, db_dish_types_to_search, limit, min_calories, max_calories
+            db, exclude_ids, preferences, db_dish_types_to_search, limit, None, None, offset 
         )
         for recipe in db_suggestions:
             recipe_suggestions[recipe.id] = recipe
-        logger.info(f"Found {len(db_suggestions)} initial suggestions from DB for user {preferences.user_id}.")
+        logger.info(f"[DB] offset={offset} -> {len(db_suggestions)} recetas")
 
-    if len(recipe_suggestions) < limit:
-        spoon_recipes_needed = limit - len(recipe_suggestions)
-        logger.info(f"Not enough DB suggestions. Fetching {spoon_recipes_needed} more from Spoonacular API for user {preferences.user_id}.")
-        spoon_service = SpoonacularService()
-        generator = MealPlanGenerator(preferences, db, None)
-        base_params = generator.base_search_params
+        # ✅ Si no hay suficientes pero solo en la primera página → completamos con API
+        if offset == 0 and len(recipe_suggestions) < limit:
+            spoon_needed = limit - len(recipe_suggestions)
+            logger.info(f"Not enough DB suggestions.. Fetching {spoon_needed} from Spoonacular")
+            spoon_results = await fetch_spoon_recipes(
+                db, preferences, spoonacular_type_to_search, spoon_needed
+            )
+            for r in spoon_results:
+                if r.id not in exclude_ids:
+                    recipe_suggestions[r.id] = r
 
+    else:
+        logger.info("User has complex intolerances. Fetching all suggestions from Spoonacular API.")
 
-        diet_used_in_query = base_params.get("diet")
-        api_result = await spoon_service.search_recipes(
-            diet=diet_used_in_query,
-            intolerances=base_params.get("intolerances"),
-            cuisine=base_params.get("cuisines"),
-            type=spoonacular_type_to_search,
-            min_calories=None,
-            max_calories=None,
-            number=spoon_recipes_needed * 3,
-            sort="random"
+        spoon_results = await fetch_spoon_recipes(
+            db, preferences, spoonacular_type_to_search, limit, offset
         )
 
-        if api_result.get("error"):
-            logger.warning(f"Spoonacular API returned a body error for suggestions search: {api_result['error']}")
-            return list(recipe_suggestions.values())
-        
-        for recipe in api_result.get("results", []):
-            db_recipe, was_created = get_or_create_spoonacular_recipe(db, recipe)
-            if db_recipe and diet_used_in_query:
-                is_diet_already_associated = any(
-                    dt.name.lower() == diet_used_in_query.lower() 
-                    for dt in db_recipe.diet_types
-                )
-                if not is_diet_already_associated:
-                    diet_obj = get_or_create_diet_type(db, diet_used_in_query)
-                    if diet_obj:
-                        db_recipe.diet_types.append(diet_obj)
+        for r in spoon_results:
+            if r.id not in exclude_ids:
+                recipe_suggestions[r.id] = r
 
-            if db_recipe and db_recipe.id not in recipe_suggestions and db_recipe.id != (meal_item.recipe_id if meal_item else None):
-                recipe_suggestions[db_recipe.id] = db_recipe
-            db.commit()
-
-    return list(recipe_suggestions.values())[:limit*2]
+    return list(recipe_suggestions.values())[:limit]
 
 def meal_plan_to_response(meal_plan: MealPlan, lang: str) -> dict:
 

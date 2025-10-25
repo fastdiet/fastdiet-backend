@@ -1,6 +1,6 @@
 import logging
 import random
-from sqlalchemy import or_
+from sqlalchemy import desc, func, or_
 from sqlalchemy.orm import Session, selectinload
 from app.core.meal_plan_config import MealPlanConfig
 from app.crud.cuisine_region import get_or_create_cuisine_region
@@ -50,8 +50,11 @@ def get_recipe_suggestions_from_db(
     db: Session,
     exclude_recipe_ids: set[int],
     preferences: UserPreferences,
-    db_dish_types: list[str], limit: int, 
-    min_calories: float | None, max_calories: float | None
+    db_dish_types: list[str],
+    limit: int, 
+    min_calories: float | None,
+    max_calories: float | None,
+    offset: int = 0,
 ):
 
     query = db.query(Recipe).filter(
@@ -123,10 +126,21 @@ def get_recipe_suggestions_from_db(
                 CuisineRegion.id.is_(None)
             )
         )
-    fetch_limit = max(limit * 2, 20)
-    potential_recipes = query.distinct().limit(fetch_limit).all()
-    random.shuffle(potential_recipes)
-    return potential_recipes[:limit*2]
+
+    FETCH_POOL = max(limit * 20, 100)
+    random_block = (
+        query.order_by(func.rand())
+        .limit(FETCH_POOL)
+        .subquery()
+    )
+
+    ranked = (
+        db.query(Recipe)
+        .select_entity_from(random_block)
+        .order_by(desc(Recipe.health_score), func.rand())
+    )
+    
+    return ranked.offset(offset).limit(limit).all()
     
 
 def _create_recipe_nutrients(db: Session, recipe_id: int, nutrients_data: list) -> list[RecipesNutrient]:

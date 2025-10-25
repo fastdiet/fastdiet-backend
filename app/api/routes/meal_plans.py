@@ -90,6 +90,7 @@ async def get_meal_suggestions(
     slot: int | None = Query(None, ge=0),
     meal_type: str | None = Query(None),
     limit: int = Query(5, ge=1, le=10),
+    offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     lang: str = Depends(get_language)
@@ -124,7 +125,7 @@ async def get_meal_suggestions(
         logger.warning(f"Bad request for suggestions from user ID {current_user.id}({current_user.username}): incorrect parameters.")
         raise HTTPException(status_code=400, detail="Either meal_item_id or (day_index and slot) must be provided")
     
-    recipe_suggestions = await get_meal_replacement_suggestions(db, preferences, meal_to_replace, type_to_search, limit )
+    recipe_suggestions = await get_meal_replacement_suggestions(db, preferences, meal_to_replace, type_to_search, limit, offset )
         
     return serialize_recipe_short_list(recipe_suggestions, lang)
 

@@ -137,3 +137,16 @@ class SpoonacularService:
             "aisle": data.get("aisle"),
             "possible_units": data.get("possibleUnits"),
         }
+    
+    async def fetch_recipes_bulk(self, ids: list[int], include_nutrition: bool = False) -> list[dict]:
+        ids_str = ",".join(map(str, ids))
+        params = {
+            "ids": ids_str,
+            "includeNutrition": str(include_nutrition).lower()
+        }
+
+        return await self._request_with_retry(
+            "GET",
+            "recipes/informationBulk",
+            params=params
+        )
