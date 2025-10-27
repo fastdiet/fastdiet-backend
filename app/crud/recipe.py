@@ -140,6 +140,9 @@ def get_recipe_suggestions_from_db(
     else:
         logger.info("-> Saltando filtro de cocinas (usuario sin cocinas seleccionadas).")
 
+
+    query = query.distinct()
+    logger.info(f"-> Después de aplicar DISTINCT, recetas únicas encontradas: {query.count()}")
     ranked_query = query.order_by(
         desc(Recipe.health_score),
         desc(Recipe.spoonacular_score),
@@ -147,6 +150,7 @@ def get_recipe_suggestions_from_db(
     )
 
     page = ranked_query.offset(offset).limit(limit).all()
+    logger.info(f"-> Devolviendo {len(page)} recetas de la página.")
     random.shuffle(page)
 
     return page
