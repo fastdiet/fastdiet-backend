@@ -3,7 +3,7 @@ aiohappyeyeballs==2.6.1
 aiohttp==3.12.15
 aiosignal==1.4.0
 aiosmtplib==3.0.2
-sqlalchemy>=2.0.0
+alembic==1.16.4
 annotated-types==0.7.0
 anyio==4.9.0
 APScheduler==3.11.0
@@ -55,6 +55,7 @@ multidict==6.6.4
 mysql-connector==2.2.9
 packaging==25.0
 passlib==1.7.4
+pip-check-reqs==2.5.5
 pluggy==1.6.0
 propcache==0.3.2
 proto-plus==1.26.1
@@ -66,6 +67,7 @@ pydantic==2.11.3
 pydantic-settings==2.10.1
 pydantic_core==2.33.1
 Pygments==2.19.2
+PyJWT==2.10.1
 PyMySQL==1.1.1
 pytest==8.4.1
 pytest-asyncio==1.1.0

@@ -8,7 +8,8 @@ from app.core.errors import ErrorCode
 from app.core.security import verify_password
 from app.crud.user_preferences import get_user_preferences_by_user_id, get_user_preferences_details
 from app.schemas.token import AuthResponse, TokenResponse
-from jose import JWTError, jwt
+from jose import jwt
+from jose.exceptions import ExpiredSignatureError, JWTError
 from app.core.config import get_settings
 from app.crud.user import create_apple_user, create_google_user, get_user_by_email, get_user_by_id, get_user_by_username, update_apple_user, update_google_user
 from sqlalchemy.orm import Session
@@ -90,42 +91,49 @@ def verify_apple_token(authorization: str = Header(...)):
     try:
         if not authorization.startswith("Bearer "):
             raise ValueError("Authorization header must start with 'Bearer '")
+
+        token = authorization.split(" ")[1]
         
-        token = authorization.split(" ")[1] 
-        if not token:
-            raise ValueError("Token cannot be empty")
-
-    
-        apple_keys = requests.get(APPLE_PUBLIC_KEYS_URL).json()["keys"]
-
         header = jwt.get_unverified_header(token)
-        key = next((k for k in apple_keys if k["kid"] == header["kid"]), None)
-        if not key:
-            raise ValueError("Invalid key ID")
+        kid = header.get("kid")
+        if not kid:
+            raise ValueError("Missing 'kid' in token header")
 
-        public_key = jwt.construct_rsa_public_key(key)
+        apple_keys = requests.get(APPLE_PUBLIC_KEYS_URL).json()["keys"]
+        key = next((k for k in apple_keys if k["kid"] == kid), None)
+        if not key:
+            raise ValueError("No matching public key found")
+
         decoded = jwt.decode(
             token,
-            public_key,
+            key,
+            algorithms=["RS256"],
             audience=APPLE_AUDIENCE,
-            issuer=APPLE_ISSUER,
-            options={"verify_exp": True}
+            issuer=APPLE_ISSUER
         )
 
-        email = decoded.get("email")
         sub = decoded.get("sub")
+        email = decoded.get("email")
 
         if not sub:
-            raise ValueError("Missing Apple sub claim")
+            raise ValueError("Missing 'sub' in token claims")
 
-        logger.info(f"Verified Apple token for {email or 'unknown email'}")
         return {"sub": sub, "email": email}
 
-    except Exception as e:
-        logger.warning(f"Apple token verification failed: {e}")
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=401,
+            detail={"code": ErrorCode.INVALID_APPLE_TOKEN, "message": "Apple token expired"}
+        )
+    except JWTError as e:
         raise HTTPException(
             status_code=400,
-            detail={"code": ErrorCode.INVALID_APPLE_TOKEN, "message": "Invalid Apple token"}
+            detail={"code": ErrorCode.INVALID_APPLE_TOKEN, "message": f"Invalid Apple token: {e}"}
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail={"code": ErrorCode.INVALID_APPLE_TOKEN, "message": f"Apple verification failed: {e}"}
         )
 
 # Function to decode the JWT token and extract the user information
