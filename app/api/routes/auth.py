@@ -4,7 +4,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from app.core.errors import ErrorCode
 from app.db.db_connection import get_db
-from app.core.auth import authenticate_google_user, authenticate_user, get_current_user, get_language, refresh_user_token, verify_google_token
+from app.core.auth import authenticate_apple_user, authenticate_google_user, authenticate_user, get_current_user, get_language, refresh_user_token, verify_apple_token, verify_google_token
 from app.schemas.token import AuthResponse, RefreshRequest, TokenResponse
 from app.schemas.user import EmailRequest, UserRegister, UserResponse
 from app.schemas.common import SuccessResponse
@@ -41,6 +41,11 @@ def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depend
 def login_with_google(db: Session = Depends(get_db), id_info: dict = Depends(verify_google_token)):
     logger.info(f"Google sign-in attempt for email: {id_info.get('email')}")
     return authenticate_google_user(db, id_info["email"], id_info["sub"])
+
+@router.post("/login-with-apple", response_model=AuthResponse)
+def login_with_apple(db: Session = Depends(get_db), id_info: dict = Depends(verify_apple_token)):
+    logger.info(f"Apple sign-in attempt for email: {id_info.get('email')}")
+    return authenticate_apple_user(db, id_info["email"], id_info["sub"])
 
 
 @router.post("/logout", response_model=SuccessResponse)

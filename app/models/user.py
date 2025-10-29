@@ -16,7 +16,7 @@ class User(Base):
     age = Column(Integer, nullable=True)
     weight = Column(Float, nullable=True)
     height = Column(Float, nullable=True)
-    auth_method = Column(Enum('google', 'traditional', name='auth_method_types'), nullable=False, default="traditional")
+    auth_method = Column(Enum('google', 'traditional', 'apple', name='auth_method_types'), nullable=False, default="traditional")
     is_verified = Column(Boolean, default=False)
     spoonacular_username = Column(String(255), nullable=True)
     spoonacular_hash = Column(String(255), nullable=True)

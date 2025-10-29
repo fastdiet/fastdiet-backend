@@ -49,3 +49,24 @@ def update_google_user(db: Session, db_user: User, sub: str) -> User:
     db.commit()
     db.refresh(db_user)
     return db_user
+
+
+def create_apple_user(db: Session, email: str | None, sub: str) -> User:
+    user = User(
+        email=email,
+        auth_method="apple",
+        sub=sub,
+        is_verified=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+def update_apple_user(db: Session, db_user: User, sub: str) -> User:
+    db_user.sub = sub
+    db_user.auth_method = "apple"
+    db_user.is_verified = True
+    db.commit()
+    db.refresh(db_user)
+    return db_user

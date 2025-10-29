@@ -56,8 +56,6 @@ def get_recipe_suggestions_from_db(
     max_calories: float | None,
     offset: int = 0
 ):
-    logger.debug("--- Iniciando búsqueda de recetas en DB ---")
-    logger.info(f"Tipos de plato a buscar: {db_dish_types}")
     query = db.query(Recipe).filter(
         Recipe.id.notin_(exclude_recipe_ids),
         Recipe.spoonacular_id.isnot(None),
@@ -66,10 +64,8 @@ def get_recipe_suggestions_from_db(
 
     if min_calories is not None and max_calories is not None:
         query = query.filter(Recipe.calories.between(min_calories, max_calories))
-        logger.info(f"-> Después de filtrar por calorías, resultados: {query.count()}")
 
     query = query.join(RecipesDishType).join(DishType).filter(DishType.name.in_(db_dish_types))
-    logger.info(f"-> Después de filtrar por tipo de plato, resultados: {query.count()}")
 
     if preferences.diet_type_id and preferences.diet_type_id != MealPlanConfig.BALANCE_DIET_ID:
         if preferences.diet_type_id == MealPlanConfig.VEGETARIAN_DIET_ID:
@@ -110,10 +106,6 @@ def get_recipe_suggestions_from_db(
             )
         else:
             query = query.join(RecipesDietType).filter(RecipesDietType.diet_type_id == preferences.diet_type_id)
-        
-        logger.info(f"-> Después de aplicar filtro de dieta, resultados: {query.count()}")
-    else:
-        logger.info("-> Saltando filtro de dieta (usuario con dieta balanceada).")
 
     # Filter by intolerances
     if preferences.intolerances:
@@ -123,11 +115,7 @@ def get_recipe_suggestions_from_db(
                 query = query.filter(Recipe.gluten_free == True)
             if 'dairy' in intolerance_name:
                 query = query.filter(Recipe.dairy_free == True)
-        logger.info(f"-> Después de aplicar filtro de intolerancias, resultados: {query.count()}")
-    else: 
-        logger.info("-> Saltando filtro de intolerancias (usuario sin intolerancias).")
 
-    # Filter by cuisines
     if preferences.cuisines:
         cuisine_ids = [cuisine.id for cuisine in preferences.cuisines]
         query = query.outerjoin(Recipe.cuisines).filter(
@@ -136,13 +124,8 @@ def get_recipe_suggestions_from_db(
                 CuisineRegion.id.is_(None)
             )
         )
-        logger.info(f"-> Después de aplicar filtro de cocinas, resultados: {query.count()}")
-    else:
-        logger.info("-> Saltando filtro de cocinas (usuario sin cocinas seleccionadas).")
-
 
     query = query.distinct()
-    logger.info(f"-> Después de aplicar DISTINCT, recetas únicas encontradas: {query.count()}")
     ranked_query = query.order_by(
         desc(Recipe.health_score),
         desc(Recipe.spoonacular_score),
@@ -150,7 +133,6 @@ def get_recipe_suggestions_from_db(
     )
 
     page = ranked_query.offset(offset).limit(limit).all()
-    logger.info(f"-> Devolviendo {len(page)} recetas de la página.")
     random.shuffle(page)
 
     return page

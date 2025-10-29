@@ -101,6 +101,7 @@ UNIT_TRANSLATOR = {
     "fillet": "filetes",
     "Tb": "cucharadas",
     "pkg": "paq",
+    "rib": "tallo",
 }
 
 REVERSED_UNIT_EXCEPTIONS = {v: k for k, v in UNIT_TRANSLATOR.items()}
